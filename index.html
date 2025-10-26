@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Projeto</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px;
+    }
+    iframe {
+      width: 90%;
+      height: 70%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>O Cu de Bokus Abre tudo</h1>
+
+  <label>Proxy Upstream:</label>
+  <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT" size="40">
+  <button id="setProxy">Atualizar Proxy</button>
+
+  <label>URL para acessar:</label>
+  <input id="url" type="text" placeholder="Digite a URL..." size="50">
+  <button id="go">Ir</button>
+
+  <iframe id="frame"></iframe>
+
+  <script>
+    const proxyInput = document.getElementById("proxy");
+    const urlInput = document.getElementById("url");
+    const iframe = document.getElementById("frame");
+
+    document.getElementById("setProxy").addEventListener("click", async () => {
+      const proxy = proxyInput.value.trim();
+      if (!proxy) return alert("Digite um proxy válido");
+
+      try {
+        const res = await fetch("/set-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ proxy })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          alert("✅ Proxy atualizado para: " + data.proxy);
+        } else {
+          alert("⚠️ Proxy configurado, mas falhou ao acessar Google: " + (data.error || "erro desconhecido"));
+        }
+      } catch (err) {
+        alert("❌ Erro ao atualizar proxy: " + err.message);
+      }
+    });
+
+    document.getElementById("go").addEventListener("click", () => {
+      const url = urlInput.value.trim();
+      if (!url) return alert("Digite uma URL!");
+      iframe.src = "/proxy?url=" + encodeURIComponent(url);
+    });
+  </script>
+</body>
+</html>
