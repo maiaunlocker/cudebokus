@@ -250,18 +250,29 @@
     <div class="toast" id="toast"></div>
 
     <!-- Scripts do Ultraviolet -->
-    <script src="/uv/uv.bundle.js"></script>
-    <script src="/uv/uv.client.js"></script>
-    <script src="/uv/uv.handler.js"></script>
+<script src="/uv/uv.bundle.js"></script>
+<script src="/uv/uv.client.js"></script>
+<script src="/uv/uv.handler.js"></script>
 
-    <script>
-        // ========== INICIALIZAR UV ==========
+<script>
+    (async () => {
+        // ===== REGISTRO DO SERVICE WORKER =====
+        try {
+            await navigator.serviceWorker.register("/uv/uv.sw.js", {
+                scope: "/uv/service/"
+            });
+            console.log("✅ Service Worker registrado!");
+        } catch (e) {
+            console.error("❌ SW falhou:", e);
+        }
+
+        // ===== INICIALIZAR UV =====
         const uv = new Ultraviolet({
             prefix: "/uv/service/",
             codec: Ultraviolet.codec.xor
         });
 
-        // ========== ELEMENTOS DO DOM ==========
+        // ===== ELEMENTOS DO DOM =====
         const proxyInput = document.getElementById("proxy");
         const urlInput = document.getElementById("url");
         const iframe = document.getElementById("frame");
@@ -273,7 +284,7 @@
         const setProxyBtn = document.getElementById("setProxy");
         const setProxyText = document.getElementById("setProxyText");
 
-        // ========== FUNÇÕES AUXILIARES ==========
+        // ===== FUNÇÕES AUXILIARES =====
         function showToast(message, type = 'success') {
             toast.textContent = message;
             toast.className = `toast ${type}`;
@@ -285,23 +296,15 @@
             proxyStatus.className = `proxy-status show ${type}`;
             proxyStatusTitle.textContent = title;
             proxyStatusMsg.textContent = message;
-
-            if (type === 'success') {
-                proxyIcon.innerHTML = '✅';
-            } else if (type === 'error') {
-                proxyIcon.innerHTML = '❌';
-            } else if (type === 'loading') {
-                proxyIcon.innerHTML = '<div class="spinner"></div>';
-            }
+            if (type === 'success') proxyIcon.innerHTML = '✅';
+            else if (type === 'error') proxyIcon.innerHTML = '❌';
+            else if (type === 'loading') proxyIcon.innerHTML = '<div class="spinner"></div>';
         }
 
-        // ========== CONFIGURAR PROXY ==========
+        // ===== CONFIGURAR PROXY =====
         document.getElementById("setProxy").addEventListener("click", async () => {
             const proxy = proxyInput.value.trim();
-            if (!proxy) {
-                showToast("Digite um proxy válido", "warning");
-                return;
-            }
+            if (!proxy) return showToast("Digite um proxy válido", "warning");
 
             setProxyBtn.disabled = true;
             setProxyText.textContent = "Verificando...";
@@ -314,18 +317,14 @@
                     body: JSON.stringify({ proxy })
                 });
                 const data = await res.json();
-
-                // Pequeno delay para melhor UX
                 await new Promise(resolve => setTimeout(resolve, 500));
 
                 if (data.success) {
-                    showProxyStatus('success', '✅ Proxy Aprovado!',
-                        `Funcionando. Status: ${data.status || '200'}`);
+                    showProxyStatus('success', '✅ Proxy Aprovado!', `Funcionando. Status: ${data.status || '200'}`);
                     showToast("✅ Proxy configurado com sucesso!", "success");
                     localStorage.setItem('savedProxy', proxy);
                 } else {
-                    showProxyStatus('error', '❌ Proxy Recusado',
-                        `Erro: ${data.error || 'Não foi possível validar'}`);
+                    showProxyStatus('error', '❌ Proxy Recusado', `Erro: ${data.error || 'Não foi possível validar'}`);
                     showToast("⚠️ Proxy não validado: " + (data.error || "erro desconhecido"), "warning");
                 }
             } catch (err) {
@@ -337,16 +336,12 @@
             }
         });
 
-        // ========== LIMPAR PROXY ==========
+        // ===== LIMPAR PROXY =====
         document.getElementById("clearProxy").addEventListener("click", async () => {
             proxyInput.value = "";
             proxyStatus.classList.remove('show');
             try {
-                await fetch("/set-proxy", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ proxy: "" })
-                });
+                await fetch("/set-proxy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proxy: "" }) });
                 showToast("✅ Proxy removido", "success");
                 localStorage.removeItem('savedProxy');
             } catch (err) {
@@ -354,13 +349,10 @@
             }
         });
 
-        // ========== NAVEGAR (CORRIGIDO!) ==========
+        // ===== NAVEGAR (COM PREFIXO UV!) =====
         function abrirUrl() {
             const url = urlInput.value.trim();
-            if (!url) {
-                showToast("Digite uma URL!", "warning");
-                return;
-            }
+            if (!url) return showToast("Digite uma URL!", "warning");
 
             let finalUrl = url;
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -368,7 +360,6 @@
             }
 
             try {
-                // ⚠️ CORREÇÃO AQUI: adicionar o prefixo do serviço UV
                 const encoded = uv.encodeUrl(finalUrl);
                 iframe.src = "/uv/service/" + encoded;
                 showToast("Carregando...", "success");
@@ -382,7 +373,7 @@
             if (e.key === "Enter") abrirUrl();
         });
 
-        // ========== RECARREGAR ==========
+        // ===== RECARREGAR =====
         document.getElementById("reload").addEventListener("click", () => {
             if (iframe.src) {
                 iframe.src = iframe.src;
@@ -392,11 +383,10 @@
             }
         });
 
-        // ========== RESTAURAR PROXY SALVO ==========
+        // ===== RESTAURAR PROXY SALVO =====
         const savedProxy = localStorage.getItem('savedProxy');
-        if (savedProxy) {
-            proxyInput.value = savedProxy;
-        }
-    </script>
+        if (savedProxy) proxyInput.value = savedProxy;
+    })();
+</script>
 </body>
 </html>
