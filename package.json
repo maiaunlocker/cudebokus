@@ -11,6 +11,7 @@
     "express": "^4.18.2",
     "https-proxy-agent": "^7.0.6",
     "socks-proxy-agent": "^8.0.5",
-    "wisp-server-node": "^1.0.5"
+    "node-fetch": "^3.3.2",
+    "@mercuryworkshop/wisp-js": "^1.0.2"
   }
 }
