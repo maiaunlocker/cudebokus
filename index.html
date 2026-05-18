@@ -37,6 +37,35 @@
             min-height: 100vh;
         }
 
+        /* ========== TOGGLE BUTTON ========== */
+        .toggle-view {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+        }
+
+        .toggle-btn {
+            padding: 10px 16px;
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            background: rgba(0, 20, 0, 0.9);
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(0, 255, 65, 0.15);
+            box-shadow: 0 0 15px rgba(0,255,65,0.4);
+            transform: translateY(-1px);
+        }
+
         /* ========== HEADER ========== */
         .header {
             text-align: center;
@@ -76,6 +105,10 @@
             margin: 0 auto 15px;
         }
 
+        .controls.desktop-view {
+            max-width: 100%;
+        }
+
         .input-group {
             background: rgba(0, 20, 0, 0.85);
             border: 1px solid #00ff41;
@@ -83,6 +116,18 @@
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.05);
             margin-bottom: 12px;
+        }
+
+        .controls.desktop-view .input-group {
+            display: inline-block;
+            width: calc(50% - 6px);
+            margin-right: 12px;
+            margin-bottom: 12px;
+            vertical-align: top;
+        }
+
+        .controls.desktop-view .input-group:nth-child(2) {
+            margin-right: 0;
         }
 
         .input-group label {
@@ -242,6 +287,12 @@
             flex: 1;
         }
 
+        .controls.desktop-view ~ .iframe-container {
+            max-width: 100%;
+            height: 70vh;
+            margin: 0;
+        }
+
         .iframe-header {
             display: flex;
             align-items: center;
@@ -274,6 +325,10 @@
             border: none;
             border-radius: 4px;
             background: #fff;
+        }
+
+        .controls.desktop-view ~ .iframe-container iframe {
+            height: calc(70vh - 70px);
         }
 
         /* ========== TOAST ========== */
@@ -321,12 +376,25 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* ========== RESPONSIVO ========== */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .toggle-view { top: 10px; right: 10px; }
+            .header h1 { font-size: 1.5em; }
+            .controls.desktop-view .input-group { width: 100%; margin-right: 0; }
+        }
     </style>
 </head>
 <body>
 
 <!-- CANVAS DO MATRIX -->
 <canvas id="matrix"></canvas>
+
+<!-- TOGGLE VIEW BUTTON -->
+<div class="toggle-view">
+    <button class="toggle-btn" id="toggleBtn">📱 MOBILE</button>
+</div>
 
 <div class="content">
     <!-- HEADER -->
@@ -336,7 +404,7 @@
     </div>
 
     <!-- CONTROLES -->
-    <div class="controls">
+    <div class="controls" id="controls">
 
         <!-- PROXY -->
         <div class="input-group">
@@ -386,6 +454,27 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    // ==================== TOGGLE VIEW ====================
+    const toggleBtn = document.getElementById('toggleBtn');
+    const controls = document.getElementById('controls');
+    let isMobileView = true;
+
+    toggleBtn.addEventListener('click', () => {
+        isMobileView = !isMobileView;
+        
+        if (isMobileView) {
+            controls.classList.remove('desktop-view');
+            toggleBtn.textContent = '📱 MOBILE';
+            showToast('MODO MOBILE ATIVADO', 'success');
+        } else {
+            controls.classList.add('desktop-view');
+            toggleBtn.textContent = '🖥️ DESKTOP';
+            showToast('MODO DESKTOP ATIVADO', 'success');
+        }
+        
+        localStorage.setItem('viewMode', isMobileView ? 'mobile' : 'desktop');
+    });
+
     // ==================== MATRIX ====================
     const canvas = document.getElementById('matrix');
     const ctx = canvas.getContext('2d');
@@ -528,9 +617,16 @@
         }
     });
 
-    // RESTAURAR PROXY SALVO
+    // RESTAURAR PROXY SALVO E VIEW MODE
     const savedProxy = localStorage.getItem('savedProxy');
     if (savedProxy) proxyInput.value = savedProxy;
+
+    const savedViewMode = localStorage.getItem('viewMode');
+    if (savedViewMode === 'desktop') {
+        isMobileView = false;
+        controls.classList.add('desktop-view');
+        toggleBtn.textContent = '🖥️ DESKTOP';
+    }
 </script>
 </body>
 </html>
