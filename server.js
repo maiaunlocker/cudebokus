@@ -20,7 +20,6 @@ app.use(compression());
 app.use(express.static(__dirname));
 
 // ==================== CONFIGURAÇÕES DE SEGURANÇA ====================
-// Desabilitar verificação SSL (apenas para desenvolvimento)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // ==================== VARIÁVEIS GLOBAIS ====================
@@ -28,11 +27,6 @@ let UPSTREAM_PROXY = "";
 
 // ==================== FUNÇÕES UTILITÁRIAS ====================
 
-/**
- * Cria um agente HTTP/HTTPS apropriado baseado no tipo de proxy
- * @param {string} proxy - URL do proxy (http://, https://, ou socks5://)
- * @returns {Object|undefined} - Agente ou undefined se não houver proxy
- */
 function getAgent(proxy) {
     if (!proxy) return undefined;
 
@@ -50,11 +44,6 @@ function getAgent(proxy) {
     }
 }
 
-/**
- * Escapa caracteres HTML perigosos para evitar injeção
- * @param {string} text - Texto a ser escapado
- * @returns {string} - Texto escapado
- */
 function escapeHtml(text) {
     const map = {
         '&': '&amp;',
@@ -66,13 +55,6 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-/**
- * Gera uma página HTML de erro formatada
- * @param {string} mensagem - Mensagem de erro
- * @param {string} url - URL que causou o erro
- * @param {string} proxy - Proxy usado (opcional)
- * @returns {string} - HTML formatado
- */
 function gerarPaginaErro(mensagem, url, proxy = null) {
     return `
         <!DOCTYPE html>
@@ -127,33 +109,170 @@ function gerarPaginaErro(mensagem, url, proxy = null) {
     `;
 }
 
+/**
+ * Reescreve URLs relativas e absolutas em HTML
+ * @param {string} html - HTML original
+ * @param {URL} baseUrl - URL base para resolver URLs relativas
+ * @returns {string} - HTML reescrito
+ */
+function reescreverUrls(html, baseUrl) {
+    console.log('[REESCREVER] Iniciando reescrita de URLs...');
+
+    // ========== REESCREVER HREF ==========
+    html = html.replace(/href=["']([^"']*?)["']/g, (match, urlAtributo) => {
+        if (!urlAtributo || urlAtributo.startsWith('#') || urlAtributo.startsWith('javascript:') || urlAtributo.startsWith('mailto:')) {
+            return match;
+        }
+
+        let urlCompleta;
+        
+        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
+            // URL absoluta
+            urlCompleta = urlAtributo;
+        } else if (urlAtributo.startsWith('//')) {
+            // URL relativa ao protocolo
+            urlCompleta = baseUrl.protocol + urlAtributo;
+        } else if (urlAtributo.startsWith('/')) {
+            // URL relativa à raiz
+            urlCompleta = baseUrl.origin + urlAtributo;
+        } else {
+            // URL relativa ao caminho atual
+            urlCompleta = new URL(urlAtributo, baseUrl).href;
+        }
+
+        console.log(`[HREF] ${urlAtributo} -> ${urlCompleta}`);
+        return `href="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
+    });
+
+    // ========== REESCREVER SRC (imagens, scripts, etc) ==========
+    html = html.replace(/src=["']([^"']*?)["']/g, (match, urlAtributo) => {
+        if (!urlAtributo || urlAtributo.startsWith('data:') || urlAtributo.startsWith('javascript:')) {
+            return match;
+        }
+
+        let urlCompleta;
+        
+        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
+            // URL absoluta
+            urlCompleta = urlAtributo;
+        } else if (urlAtributo.startsWith('//')) {
+            // URL relativa ao protocolo
+            urlCompleta = baseUrl.protocol + urlAtributo;
+        } else if (urlAtributo.startsWith('/')) {
+            // URL relativa à raiz
+            urlCompleta = baseUrl.origin + urlAtributo;
+        } else {
+            // URL relativa ao caminho atual
+            urlCompleta = new URL(urlAtributo, baseUrl).href;
+        }
+
+        console.log(`[SRC] ${urlAtributo} -> ${urlCompleta}`);
+        return `src="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
+    });
+
+    // ========== REESCREVER SRCSET (imagens responsivas) ==========
+    html = html.replace(/srcset=["']([^"']*?)["']/g, (match, srcset) => {
+        const urls = srcset.split(',').map(item => {
+            const [url, size] = item.trim().split(/\s+/);
+            
+            let urlCompleta;
+            
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                urlCompleta = url;
+            } else if (url.startsWith('//')) {
+                urlCompleta = baseUrl.protocol + url;
+            } else if (url.startsWith('/')) {
+                urlCompleta = baseUrl.origin + url;
+            } else {
+                urlCompleta = new URL(url, baseUrl).href;
+            }
+
+            const novoUrl = `/proxy?url=${encodeURIComponent(urlCompleta)}`;
+            return size ? `${novoUrl} ${size}` : novoUrl;
+        }).join(', ');
+
+        console.log(`[SRCSET] Reescrito com sucesso`);
+        return `srcset="${urls}"`;
+    });
+
+    // ========== REESCREVER CSS background-image ==========
+    html = html.replace(/background-image:\s*url\(['"]?([^'")]+)['"]?\)/gi, (match, urlCss) => {
+        let urlCompleta;
+        
+        if (urlCss.startsWith('http://') || urlCss.startsWith('https://')) {
+            urlCompleta = urlCss;
+        } else if (urlCss.startsWith('//')) {
+            urlCompleta = baseUrl.protocol + urlCss;
+        } else if (urlCss.startsWith('/')) {
+            urlCompleta = baseUrl.origin + urlCss;
+        } else {
+            urlCompleta = new URL(urlCss, baseUrl).href;
+        }
+
+        console.log(`[CSS-BG] ${urlCss} -> ${urlCompleta}`);
+        return `background-image: url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
+    });
+
+    // ========== REESCREVER ACTION (formulários) ==========
+    html = html.replace(/action=["']([^"']*?)["']/g, (match, urlAtributo) => {
+        if (!urlAtributo || urlAtributo.startsWith('#') || urlAtributo.startsWith('javascript:')) {
+            return match;
+        }
+
+        let urlCompleta;
+        
+        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
+            urlCompleta = urlAtributo;
+        } else if (urlAtributo.startsWith('//')) {
+            urlCompleta = baseUrl.protocol + urlAtributo;
+        } else if (urlAtributo.startsWith('/')) {
+            urlCompleta = baseUrl.origin + urlAtributo;
+        } else {
+            urlCompleta = new URL(urlAtributo, baseUrl).href;
+        }
+
+        console.log(`[ACTION] ${urlAtributo} -> ${urlCompleta}`);
+        return `action="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
+    });
+
+    // ========== REESCREVER LINK (CSS, favicon) ==========
+    html = html.replace(/<link\s+([^>]*?)href=["']([^"']*?)["']([^>]*?)>/gi, (match, antes, urlAtributo, depois) => {
+        if (!urlAtributo || urlAtributo.startsWith('data:')) {
+            return match;
+        }
+
+        let urlCompleta;
+        
+        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
+            urlCompleta = urlAtributo;
+        } else if (urlAtributo.startsWith('//')) {
+            urlCompleta = baseUrl.protocol + urlAtributo;
+        } else if (urlAtributo.startsWith('/')) {
+            urlCompleta = baseUrl.origin + urlAtributo;
+        } else {
+            urlCompleta = new URL(urlAtributo, baseUrl).href;
+        }
+
+        console.log(`[LINK] ${urlAtributo} -> ${urlCompleta}`);
+        return `<link ${antes}href="/proxy?url=${encodeURIComponent(urlCompleta)}"${depois}>`;
+    });
+
+    console.log('[REESCREVER] ✅ Reescrita completa!');
+    return html;
+}
+
 // ==================== ROTAS ====================
 
-/**
- * ROTA GET /
- * Serve o arquivo index.html na raiz
- */
 app.get("/", (req, res) => {
     console.log('[ROTA] GET / - Servindo index.html');
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
-/**
- * ROTA POST /set-proxy
- * Configura o proxy upstream e testa sua conexão
- * 
- * Body esperado: { proxy: "http://user:pass@host:port" }
- * 
- * Resposta:
- * - success: true - Proxy funciona
- * - success: false - Proxy não funciona
- */
 app.post("/set-proxy", async (req, res) => {
     console.log('[ROTA] POST /set-proxy');
     
     const { proxy } = req.body;
 
-    // ========== Se vazio, remover proxy ==========
     if (!proxy) {
         UPSTREAM_PROXY = "";
         console.log('[PROXY] Proxy removido');
@@ -164,13 +283,11 @@ app.post("/set-proxy", async (req, res) => {
         });
     }
 
-    // ========== Configurar novo proxy ==========
     UPSTREAM_PROXY = proxy.trim();
     console.log('[PROXY] Novo proxy configurado:', UPSTREAM_PROXY);
     
     const agent = getAgent(UPSTREAM_PROXY);
 
-    // ========== Testar proxy ==========
     try {
         console.log('[TESTE] Testando proxy com Google...');
         
@@ -203,21 +320,9 @@ app.post("/set-proxy", async (req, res) => {
     }
 });
 
-/**
- * ROTA GET /proxy
- * Proxy principal que carrega URLs através do proxy upstream
- * 
- * Query params: ?url=<URL_CODIFICADA>
- * 
- * Funcionalidades:
- * - Reescreve URLs relativas em HTML
- * - Passa através de arquivos (imagens, CSS, JS)
- * - Trata erros apropriadamente
- */
 app.get("/proxy", async (req, res) => {
     const url = req.query.url;
 
-    // ========== Validar URL ==========
     if (!url) {
         console.log('[PROXY] ❌ URL inválida');
         return res.status(400).send(`
@@ -249,7 +354,6 @@ app.get("/proxy", async (req, res) => {
             console.log('[PROXY] Acesso direto (sem proxy)');
         }
 
-        // ========== Fazer requisição ==========
         const response = await fetch(url, {
             agent,
             headers: {
@@ -264,26 +368,13 @@ app.get("/proxy", async (req, res) => {
 
         // ========== Se for HTML, reescrever URLs ==========
         if (contentType.includes('text/html')) {
-            console.log('[HTML] Reescrevendo URLs relativas...');
+            console.log('[HTML] Processando HTML...');
             
             let html = await response.text();
             const baseUrl = new URL(url);
 
-            // Reescrever href
-            html = html.replace(/href=["']\/([^"']*?)["']/g, (match, path) => {
-                if (path.startsWith('http')) return match;
-                const novaUrl = baseUrl.origin + '/' + path;
-                console.log(`[REESCREVER] href: /${path} -> ${novaUrl}`);
-                return `href="/proxy?url=${encodeURIComponent(novaUrl)}"`;
-            });
-
-            // Reescrever src
-            html = html.replace(/src=["']\/([^"']*?)["']/g, (match, path) => {
-                if (path.startsWith('http')) return match;
-                const novaUrl = baseUrl.origin + '/' + path;
-                console.log(`[REESCREVER] src: /${path} -> ${novaUrl}`);
-                return `src="/proxy?url=${encodeURIComponent(novaUrl)}"`;
-            });
+            // Usar função melhorada de reescrita
+            html = reescreverUrls(html, baseUrl);
 
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(html);
@@ -322,16 +413,10 @@ app.listen(PORT, () => {
 
 // ==================== TRATAMENTO DE ERROS GLOBAIS ====================
 
-/**
- * Tratamento de promessas rejeitadas não capturadas
- */
 process.on('unhandledRejection', (err) => {
     console.error('[ERRO NÃO CAPTURADO] Promessa rejeitada:', err);
 });
 
-/**
- * Tratamento de exceções não capturadas
- */
 process.on('uncaughtException', (err) => {
     console.error('[EXCEÇÃO NÃO CAPTURADA]:', err);
 });
