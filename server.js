@@ -120,23 +120,20 @@ function resolverUrl(urlAtributo, baseUrl) {
         urlAtributo.startsWith('javascript:') || 
         urlAtributo.startsWith('#') || 
         urlAtributo.startsWith('mailto:') ||
-        urlAtributo.startsWith('tel:')) {
+        urlAtributo.startsWith('tel:') ||
+        urlAtributo.startsWith('blob:')) {
         return null;
     }
 
     let urlCompleta;
     
     if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
-        // URL absoluta
         urlCompleta = urlAtributo;
     } else if (urlAtributo.startsWith('//')) {
-        // URL relativa ao protocolo
         urlCompleta = baseUrl.protocol + urlAtributo;
     } else if (urlAtributo.startsWith('/')) {
-        // URL relativa à raiz
         urlCompleta = baseUrl.origin + urlAtributo;
     } else {
-        // URL relativa ao caminho atual
         try {
             urlCompleta = new URL(urlAtributo, baseUrl).href;
         } catch {
@@ -148,17 +145,46 @@ function resolverUrl(urlAtributo, baseUrl) {
 }
 
 /**
- * Reescreve URLs em HTML e CSS
+ * Remove headers de segurança que podem bloquear o proxy
  */
-function reescreverUrls(html, baseUrl) {
-    console.log('[REESCREVER] Iniciando reescrita de URLs...');
+function removerHeadersBlockeadores(headers) {
+    const headersLimpezados = new Map(headers);
+    
+    // Remove headers CSP (Content Security Policy)
+    headersLimpezados.delete('content-security-policy');
+    headersLimpezados.delete('content-security-policy-report-only');
+    
+    // Remove headers de frameamento
+    headersLimpezados.delete('x-frame-options');
+    
+    // Remove CORS headers para evitar bloqueios
+    headersLimpezados.delete('access-control-allow-origin');
+    headersLimpezados.delete('access-control-allow-credentials');
+    
+    // Remove headers que indicam compressão (já descomprimidos)
+    headersLimpezados.delete('content-encoding');
+    
+    // Remove headers de cache para forçar recarregamento
+    headersLimpezados.delete('cache-control');
+    headersLimpezados.delete('expires');
+    headersLimpezados.delete('pragma');
+    
+    console.log('[HEADERS] Headers de segurança removidos');
+    return headersLimpezados;
+}
+
+/**
+ * Reescreve URLs em HTML
+ */
+function reescreverUrlsHTML(html, baseUrl) {
+    console.log('[REESCREVER-HTML] Iniciando reescrita de URLs...');
 
     // ========== REESCREVER HREF ==========
     html = html.replace(/href=["']([^"']*?)["']/g, (match, urlAtributo) => {
         const urlCompleta = resolverUrl(urlAtributo, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[HREF] ${urlAtributo}`);
+        console.log(`[HREF] ${urlAtributo.substring(0, 50)}`);
         return `href="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
@@ -167,14 +193,16 @@ function reescreverUrls(html, baseUrl) {
         const urlCompleta = resolverUrl(urlAtributo, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[SRC] ${urlAtributo}`);
+        console.log(`[SRC] ${urlAtributo.substring(0, 50)}`);
         return `src="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
     // ========== REESCREVER SRCSET (imagens responsivas) ==========
     html = html.replace(/srcset=["']([^"']*?)["']/g, (match, srcset) => {
         const urls = srcset.split(',').map(item => {
-            const [url, size] = item.trim().split(/\s+/);
+            const parts = item.trim().split(/\s+/);
+            const url = parts[0];
+            const size = parts.slice(1).join(' ');
             const urlCompleta = resolverUrl(url, baseUrl);
             
             if (!urlCompleta) return item;
@@ -192,7 +220,7 @@ function reescreverUrls(html, baseUrl) {
         const urlCompleta = resolverUrl(urlAtributo, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[ACTION] ${urlAtributo}`);
+        console.log(`[ACTION] ${urlAtributo.substring(0, 50)}`);
         return `action="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
@@ -201,50 +229,51 @@ function reescreverUrls(html, baseUrl) {
         const urlCompleta = resolverUrl(urlAtributo, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[LINK] ${urlAtributo}`);
+        console.log(`[LINK] ${urlAtributo.substring(0, 50)}`);
         return `<link ${antes}href="/proxy?url=${encodeURIComponent(urlCompleta)}"${depois}>`;
     });
 
     // ========== REESCREVER STYLE TAGS (CSS inline) ==========
     html = html.replace(/<style[^>]*?>([\s\S]*?)<\/style>/gi, (match, css) => {
         console.log('[STYLE] Reescrevendo CSS inline...');
-        const cssReescrito = reescreverCSS(css, baseUrl);
+        const cssReescrito = reescreverUrlsCSS(css, baseUrl);
         return `<style>${cssReescrito}</style>`;
     });
 
-    // ========== REESCREVER ATRIBUTOS STYLE (CSS inline) ==========
-    html = html.replace(/style=["']([^"']*?)["']/g, (match, style) => {
-        console.log('[STYLE-ATTR] Reescrevendo atributo style...');
-        const styleReescrito = reescreverCSS(style, baseUrl);
-        return `style="${styleReescrito}"`;
-    });
+    // ========== REMOVER CSP META TAGS ==========
+    html = html.replace(/<meta\s+http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
 
-    console.log('[REESCREVER] ✅ Reescrita de HTML completa!');
+    console.log('[REESCREVER-HTML] ✅ Reescrita de HTML completa!');
     return html;
 }
 
 /**
  * Reescreve URLs dentro de CSS
  */
-function reescreverCSS(css, baseUrl) {
+function reescreverUrlsCSS(css, baseUrl) {
+    console.log('[REESCREVER-CSS] Iniciando reescrita de CSS...');
+
     // ========== REESCREVER url() ==========
     css = css.replace(/url\(['"]?([^'")]+)['"]?\)/gi, (match, urlCss) => {
-        const urlCompleta = resolverUrl(urlCss.trim(), baseUrl);
+        const urlTrimmed = urlCss.trim();
+        const urlCompleta = resolverUrl(urlTrimmed, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[CSS-URL] ${urlCss} -> ${urlCompleta}`);
+        console.log(`[CSS-URL] ${urlTrimmed.substring(0, 40)}`);
         return `url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
     });
 
     // ========== REESCREVER @import ==========
     css = css.replace(/@import\s+(?:url\(['"]?|['"])(https?:\/\/[^'")]+|[^'")]+)['"]?\)?/gi, (match, urlImport) => {
-        const urlCompleta = resolverUrl(urlImport.trim(), baseUrl);
+        const urlTrimmed = urlImport.trim();
+        const urlCompleta = resolverUrl(urlTrimmed, baseUrl);
         if (!urlCompleta) return match;
         
-        console.log(`[CSS-IMPORT] ${urlImport} -> ${urlCompleta}`);
+        console.log(`[CSS-IMPORT] ${urlTrimmed.substring(0, 40)}`);
         return `@import url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
     });
 
+    console.log('[REESCREVER-CSS] ✅ Reescrita de CSS completa!');
     return css;
 }
 
@@ -341,55 +370,89 @@ app.get("/proxy", async (req, res) => {
             console.log('[PROXY] Acesso direto (sem proxy)');
         }
 
+        // ========== FAZER REQUISIÇÃO COM HEADERS CUSTOMIZADOS ==========
         const response = await fetch(url, {
             agent,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'pt-BR,pt;q=0.9',
+                'Referer': new URL(url).origin + '/'
             },
             redirect: 'follow',
             timeout: 30000
         });
 
-        const contentType = response.headers.get('content-type') || '';
+        // ========== CAPTURAR CONTENT-TYPE ==========
+        const contentType = response.headers.get('content-type') || 'text/html';
+        const contentEncoding = response.headers.get('content-encoding');
+        
         console.log(`[RESPOSTA] Content-Type: ${contentType}`);
+        console.log(`[RESPOSTA] Content-Encoding: ${contentEncoding || 'none'}`);
 
-        // ========== Se for HTML, reescrever URLs ==========
+        // ========== REMOVER HEADERS BLOQUEADORES ==========
+        const headersLimpos = removerHeadersBlockeadores(response.headers);
+
+        // ========== SE FOR HTML, REESCREVER URLS ==========
         if (contentType.includes('text/html')) {
             console.log('[HTML] Processando HTML...');
             
             let html = await response.text();
             const baseUrl = new URL(url);
 
-            // Usar função melhorada de reescrita
-            html = reescreverUrls(html, baseUrl);
+            // Reescrever URLs
+            html = reescreverUrlsHTML(html, baseUrl);
 
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            
+            // Copiar headers permitidos
+            headersLimpos.forEach((value, key) => {
+                res.setHeader(key, value);
+            });
+
             res.send(html);
             console.log('[HTML] ✅ HTML servido com sucesso');
 
         } else if (contentType.includes('text/css')) {
-            // ========== Se for CSS puro, reescrever URLs ==========
+            // ========== SE FOR CSS PURO, REESCREVER URLS ==========
             console.log('[CSS] Processando CSS...');
             
             let css = await response.text();
             const baseUrl = new URL(url);
             
-            css = reescreverCSS(css, baseUrl);
+            css = reescreverUrlsCSS(css, baseUrl);
             
             res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            
+            // Copiar headers permitidos
+            headersLimpos.forEach((value, key) => {
+                res.setHeader(key, value);
+            });
+            
             res.send(css);
             console.log('[CSS] ✅ CSS servido com sucesso');
 
         } else {
-            // ========== Para outros tipos, apenas repassar ==========
+            // ========== PARA OUTROS TIPOS (imagens, fonts, JS, etc) ==========
             console.log('[ARQUIVO] Servindo arquivo direto...');
             
-            const buffer = await response.buffer();
+            // Usar .arrayBuffer() em vez de .buffer() (mais moderno)
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            
             res.setHeader('Content-Type', contentType);
             res.setHeader('Content-Length', buffer.length);
+            
+            // Copiar headers permitidos
+            headersLimpos.forEach((value, key) => {
+                if (key !== 'content-length') {
+                    res.setHeader(key, value);
+                }
+            });
+            
             res.send(buffer);
             
-            console.log('[ARQUIVO] ✅ Arquivo servido com sucesso');
+            console.log(`[ARQUIVO] ✅ Arquivo (${(buffer.length / 1024).toFixed(2)}KB) servido com sucesso`);
         }
 
     } catch (err) {
