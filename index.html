@@ -87,6 +87,10 @@
             color: white;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         button:hover {
@@ -96,6 +100,80 @@
 
         button:active {
             transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Status do Proxy */
+        .proxy-status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .proxy-status.show {
+            display: flex;
+        }
+
+        .proxy-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .proxy-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .proxy-status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+
+        .status-icon {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .status-text strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .status-text small {
+            opacity: 0.8;
+            display: block;
+        }
+
+        /* Spinner */
+        .spinner {
+            border: 3px solid rgba(23, 162, 184, 0.3);
+            border-top: 3px solid #17a2b8;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .iframe-container {
@@ -147,28 +225,6 @@
         .toast.error { background: #dc3545; }
         .toast.warning { background: #ffc107; color: #333; }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: white;
-            font-size: 18px;
-        }
-
-        .spinner {
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         @media (max-width: 768px) {
             .header h1 { 
                 font-size: 2em; 
@@ -198,8 +254,18 @@
             <label>🔧 Proxy</label>
             <div class="input-wrapper">
                 <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT">
-                <button id="setProxy">Definir</button>
+                <button id="setProxy">
+                    <span id="setProxyText">Definir</span>
+                </button>
                 <button id="clearProxy" style="background: #dc3545;">Limpar</button>
+            </div>
+            <!-- Status do Proxy -->
+            <div id="proxyStatus" class="proxy-status">
+                <div class="status-icon" id="proxyIcon"></div>
+                <div class="status-text">
+                    <strong id="proxyStatusTitle"></strong>
+                    <small id="proxyStatusMsg"></small>
+                </div>
             </div>
         </div>
 
@@ -224,6 +290,12 @@
         const urlInput = document.getElementById("url");
         const iframe = document.getElementById("frame");
         const toast = document.getElementById("toast");
+        const proxyStatus = document.getElementById("proxyStatus");
+        const proxyIcon = document.getElementById("proxyIcon");
+        const proxyStatusTitle = document.getElementById("proxyStatusTitle");
+        const proxyStatusMsg = document.getElementById("proxyStatusMsg");
+        const setProxyBtn = document.getElementById("setProxy");
+        const setProxyText = document.getElementById("setProxyText");
         let currentUrl = null;
 
         // Função de notificação
@@ -236,6 +308,21 @@
             }, 3000);
         }
 
+        // Mostrar status do proxy
+        function showProxyStatus(type, title, message) {
+            proxyStatus.className = `proxy-status show ${type}`;
+            proxyStatusTitle.textContent = title;
+            proxyStatusMsg.textContent = message;
+
+            if (type === 'success') {
+                proxyIcon.innerHTML = '✅';
+            } else if (type === 'error') {
+                proxyIcon.innerHTML = '❌';
+            } else if (type === 'loading') {
+                proxyIcon.innerHTML = '<div class="spinner"></div>';
+            }
+        }
+
         // Configurar proxy
         document.getElementById("setProxy").addEventListener("click", async () => {
             const proxy = proxyInput.value.trim();
@@ -243,6 +330,11 @@
                 showToast("Digite um proxy válido", "warning");
                 return;
             }
+
+            // Mostrar loading
+            setProxyBtn.disabled = true;
+            setProxyText.textContent = "Verificando...";
+            showProxyStatus('loading', 'Verificando Proxy', 'Testando conexão...');
 
             try {
                 const res = await fetch("/set-proxy", {
@@ -258,19 +350,42 @@
                     data = { success: true, proxy: proxy };
                 }
 
-                if (data.success || res.ok) {
+                // Simular um pequeno delay para melhor UX
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (data.success) {
+                    showProxyStatus(
+                        'success',
+                        '✅ Proxy Aprovado!',
+                        `Proxy funcionando corretamente. Status: ${data.status || '200'}`
+                    );
                     showToast("✅ Proxy configurado com sucesso!", "success");
+                    localStorage.setItem('savedProxy', proxy);
                 } else {
-                    showToast("⚠️ Proxy configurado (verifique a conexão)", "warning");
+                    showProxyStatus(
+                        'error',
+                        '❌ Proxy Recusado',
+                        `Erro: ${data.error || 'Não foi possível validar o proxy'}`
+                    );
+                    showToast("⚠️ Proxy não validado: " + (data.error || "erro desconhecido"), "warning");
                 }
             } catch (err) {
-                showToast("❌ Erro ao configurar: " + err.message, "error");
+                showProxyStatus(
+                    'error',
+                    '❌ Erro na Verificação',
+                    err.message
+                );
+                showToast("❌ Erro: " + err.message, "error");
+            } finally {
+                setProxyBtn.disabled = false;
+                setProxyText.textContent = "Definir";
             }
         });
 
         // Limpar proxy
         document.getElementById("clearProxy").addEventListener("click", async () => {
             proxyInput.value = "";
+            proxyStatus.classList.remove('show');
             try {
                 await fetch("/set-proxy", {
                     method: "POST",
@@ -278,6 +393,7 @@
                     body: JSON.stringify({ proxy: "" })
                 });
                 showToast("✅ Proxy removido", "success");
+                localStorage.removeItem('savedProxy');
             } catch (err) {
                 showToast("❌ Erro ao limpar proxy", "error");
             }
@@ -330,15 +446,6 @@
         if (savedProxy) {
             proxyInput.value = savedProxy;
         }
-
-        // Salvar proxy quando configurar
-        const originalSetProxy = document.getElementById("setProxy").onclick;
-        document.getElementById("setProxy").addEventListener("click", () => {
-            const proxy = proxyInput.value.trim();
-            if (proxy) {
-                localStorage.setItem('savedProxy', proxy);
-            }
-        });
     </script>
 </body>
 </html>
