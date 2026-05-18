@@ -9,219 +9,421 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: #000;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
+        /* ========== MATRIX CANVAS ========== */
+        #matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.18;
+        }
+
+        /* ========== CONTEÚDO SOBRE O MATRIX ========== */
+        .content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ========== HEADER ========== */
         .header {
             text-align: center;
-            color: white;
-            margin-bottom: 30px;
+            color: #00ff41;
+            margin-bottom: 20px;
+            padding: 15px;
         }
 
         .header h1 {
-            font-size: 3em;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            font-size: 1.8em;
+            text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
+            animation: flicker 3s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 95%, 100% { opacity: 1; }
+            96% { opacity: 0.7; }
+            97% { opacity: 1; }
+            98% { opacity: 0.5; }
+            99% { opacity: 1; }
+        }
+
+        .header p {
+            font-size: 0.75em;
+            color: #00aa28;
+            font-family: 'Courier New', monospace;
+            margin-top: 5px;
             letter-spacing: 2px;
         }
 
+        /* ========== CONTROLES ========== */
         .controls {
-            max-width: 900px;
             width: 100%;
-            margin: 0 auto 20px;
+            max-width: 480px;
+            margin: 0 auto 15px;
         }
 
         .input-group {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: 15px;
+            background: rgba(0, 20, 0, 0.85);
+            border: 1px solid #00ff41;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.05);
+            margin-bottom: 12px;
         }
 
         .input-group label {
             display: block;
             font-weight: 600;
             margin-bottom: 10px;
-            color: #333;
-            font-size: 14px;
+            color: #00ff41;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
         .input-wrapper {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px;
+            flex-direction: column;
         }
 
         input[type="text"] {
-            flex: 1;
-            min-width: 250px;
-            padding: 14px 18px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 10, 0, 0.9);
+            border: 1px solid #00aa28;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
             transition: all 0.3s;
+            outline: none;
+        }
+
+        input[type="text"]::placeholder {
+            color: #005510;
         }
 
         input[type="text"]:focus {
-            outline: none;
-            border-color: #2a5298;
-            box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0,255,65,0.4);
         }
 
-        button {
-            padding: 14px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        .btn-row {
+            display: flex;
             gap: 8px;
         }
 
+        button {
+            flex: 1;
+            padding: 12px 10px;
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(0, 20, 0, 0.9);
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(42,82,152,0.4);
+            background: rgba(0, 255, 65, 0.15);
+            box-shadow: 0 0 15px rgba(0,255,65,0.4);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         button:disabled {
-            opacity: 0.6;
+            opacity: 0.4;
             cursor: not-allowed;
             transform: none;
         }
 
+        .btn-danger {
+            border-color: #ff4141;
+            color: #ff4141;
+            background: rgba(20, 0, 0, 0.9);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 65, 65, 0.15);
+            box-shadow: 0 0 15px rgba(255,65,65,0.4);
+        }
+
+        .btn-secondary {
+            border-color: #888;
+            color: #888;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(136,136,136,0.15);
+            box-shadow: 0 0 15px rgba(136,136,136,0.3);
+        }
+
+        /* ========== STATUS DO PROXY ========== */
         .proxy-status {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 8px;
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 6px;
             display: none;
             align-items: center;
-            gap: 12px;
-            font-weight: 600;
+            gap: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
         }
 
         .proxy-status.show { display: flex; }
-        .proxy-status.success { background: #d4edda; color: #155724; border: 2px solid #28a745; }
-        .proxy-status.error { background: #f8d7da; color: #721c24; border: 2px solid #dc3545; }
-        .proxy-status.loading { background: #d1ecf1; color: #0c5460; border: 2px solid #17a2b8; }
 
+        .proxy-status.success {
+            background: rgba(0, 40, 0, 0.9);
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            box-shadow: 0 0 10px rgba(0,255,65,0.2);
+        }
+
+        .proxy-status.error {
+            background: rgba(40, 0, 0, 0.9);
+            color: #ff4141;
+            border: 1px solid #ff4141;
+            box-shadow: 0 0 10px rgba(255,65,65,0.2);
+        }
+
+        .proxy-status.loading {
+            background: rgba(0, 20, 30, 0.9);
+            color: #00aaff;
+            border: 1px solid #00aaff;
+            box-shadow: 0 0 10px rgba(0,170,255,0.2);
+        }
+
+        .status-text strong {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 13px;
+        }
+
+        .status-text small {
+            opacity: 0.8;
+            font-size: 11px;
+            word-break: break-all;
+        }
+
+        /* ========== IFRAME ========== */
         .iframe-container {
-            flex: 1;
-            max-width: 900px;
             width: 100%;
+            max-width: 480px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            overflow: hidden;
+            background: rgba(0, 10, 0, 0.9);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 0 20px rgba(0,255,65,0.2);
+            flex: 1;
+        }
+
+        .iframe-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #003300;
+        }
+
+        .iframe-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff4141; }
+        .dot-yellow { background: #ffcc00; }
+        .dot-green { background: #00ff41; }
+
+        .iframe-title {
+            color: #005510;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            margin-left: 4px;
         }
 
         iframe {
             width: 100%;
-            height: 100%;
-            min-height: 600px;
+            height: 500px;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
+            background: #fff;
         }
 
+        /* ========== TOAST ========== */
         .toast {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            border-radius: 8px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 25px;
+            border-radius: 6px;
             color: white;
             font-weight: 600;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
             z-index: 1000;
             display: none;
-            animation: slideIn 0.3s ease;
+            white-space: nowrap;
+            animation: slideUp 0.3s ease;
+            letter-spacing: 1px;
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(40px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
-        .toast.success { background: #28a745; }
-        .toast.error { background: #dc3545; }
-        .toast.warning { background: #ffc107; color: #333; }
+        .toast.success { background: rgba(0,80,0,0.95); border: 1px solid #00ff41; color: #00ff41; }
+        .toast.error { background: rgba(80,0,0,0.95); border: 1px solid #ff4141; color: #ff4141; }
+        .toast.warning { background: rgba(80,60,0,0.95); border: 1px solid #ffcc00; color: #ffcc00; }
 
+        /* ========== SPINNER ========== */
         .spinner {
-            border: 3px solid rgba(23,162,184,0.3);
-            border-top: 3px solid #17a2b8;
+            border: 2px solid rgba(0,170,255,0.3);
+            border-top: 2px solid #00aaff;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             animation: spin 1s linear infinite;
             display: inline-block;
+            flex-shrink: 0;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        @media (max-width: 768px) {
-            .header h1 { font-size: 2em; }
-            .input-wrapper { flex-direction: column; }
-            button { width: 100%; }
-            iframe { min-height: 400px; }
-        }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>O Cu de B0kus</h1>
-</div>
+<!-- CANVAS DO MATRIX -->
+<canvas id="matrix"></canvas>
 
-<div class="controls">
-    <div class="input-group">
-        <label>🔧 Proxy Upstream</label>
-        <div class="input-wrapper">
-            <input id="proxy" type="text" placeholder="http://user:pass@IP:PORT ou socks5://IP:PORT">
-            <button id="setProxy"><span id="setProxyText">Definir</span></button>
-            <button id="clearProxy" style="background:#dc3545;">Limpar</button>
-        </div>
-        <div id="proxyStatus" class="proxy-status">
-            <div id="proxyIcon"></div>
-            <div>
-                <strong id="proxyStatusTitle"></strong>
-                <small id="proxyStatusMsg" style="display:block;"></small>
+<div class="content">
+    <!-- HEADER -->
+    <div class="header">
+        <h1>[ O Cu de B0kus ]</h1>
+        <p>&gt; PROXY SYSTEM ONLINE_</p>
+    </div>
+
+    <!-- CONTROLES -->
+    <div class="controls">
+
+        <!-- PROXY -->
+        <div class="input-group">
+            <label>[ PROXY UPSTREAM ]</label>
+            <div class="input-wrapper">
+                <input id="proxy" type="text" placeholder="http://user:pass@IP:PORT">
+                <div class="btn-row">
+                    <button id="setProxy"><span id="setProxyText">DEFINIR</span></button>
+                    <button id="clearProxy" class="btn-danger">LIMPAR</button>
+                </div>
+            </div>
+            <div id="proxyStatus" class="proxy-status">
+                <div id="proxyIcon"></div>
+                <div class="status-text">
+                    <strong id="proxyStatusTitle"></strong>
+                    <small id="proxyStatusMsg"></small>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="input-group">
-        <label>🌐 Endereço</label>
-        <div class="input-wrapper">
-            <input id="url" type="text" placeholder="https://exemplo.com">
-            <button id="go">Ir</button>
-            <button id="reload" style="background:#6c757d;">Recarregar</button>
+        <!-- URL -->
+        <div class="input-group">
+            <label>[ ENDEREÇO ]</label>
+            <div class="input-wrapper">
+                <input id="url" type="text" placeholder="https://exemplo.com">
+                <div class="btn-row">
+                    <button id="go">ACESSAR</button>
+                    <button id="reload" class="btn-secondary">RELOAD</button>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-<div class="iframe-container">
-    <iframe id="frame"></iframe>
+    </div>
+
+    <!-- IFRAME -->
+    <div class="iframe-container">
+        <div class="iframe-header">
+            <div class="iframe-dot dot-red"></div>
+            <div class="iframe-dot dot-yellow"></div>
+            <div class="iframe-dot dot-green"></div>
+            <span class="iframe-title">NAVEGADOR SEGURO</span>
+        </div>
+        <iframe id="frame"></iframe>
+    </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+    // ==================== MATRIX ====================
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+
+    function drawMatrix() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#00ff41';
+        ctx.font = fontSize + 'px Courier New';
+
+        for (let i = 0; i < drops.length; i++) {
+            const text = Math.random() > 0.5 ? '1' : '0';
+            ctx.fillStyle = drops[i] * fontSize < 20 ? '#ffffff' : '#00ff41';
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+
+    setInterval(drawMatrix, 50);
+
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+    // ==================== PROXY LOGIC ====================
     const proxyInput = document.getElementById("proxy");
     const urlInput = document.getElementById("url");
     const iframe = document.getElementById("frame");
@@ -250,14 +452,14 @@
         else if (type === 'loading') proxyIcon.innerHTML = '<div class="spinner"></div>';
     }
 
-    // ========== CONFIGURAR PROXY ==========
+    // CONFIGURAR PROXY
     document.getElementById("setProxy").addEventListener("click", async () => {
         const proxy = proxyInput.value.trim();
-        if (!proxy) { showToast("Digite um proxy válido", "warning"); return; }
+        if (!proxy) { showToast("INSIRA UM PROXY VÁLIDO", "warning"); return; }
 
         setProxyBtn.disabled = true;
-        setProxyText.textContent = "Verificando...";
-        showProxyStatus('loading', 'Verificando Proxy', 'Testando conexão...');
+        setProxyText.textContent = "VERIFICANDO...";
+        showProxyStatus('loading', 'VERIFICANDO PROXY', 'Testando conexão...');
 
         try {
             const res = await fetch("/set-proxy", {
@@ -269,23 +471,23 @@
             await new Promise(r => setTimeout(r, 500));
 
             if (data.success) {
-                showProxyStatus('success', '✅ Proxy Aprovado!', `Status: ${data.status || '200'}`);
-                showToast("✅ Proxy configurado!", "success");
+                showProxyStatus('success', '>> PROXY APROVADO', `Status: ${data.status || '200'} | Online`);
+                showToast("PROXY ATIVADO COM SUCESSO", "success");
                 localStorage.setItem('savedProxy', proxy);
             } else {
-                showProxyStatus('error', '❌ Proxy Recusado', `Erro: ${data.error || 'inválido'}`);
-                showToast("⚠️ Proxy não validado", "warning");
+                showProxyStatus('error', '>> PROXY RECUSADO', `${data.error || 'Falha na conexão'}`);
+                showToast("PROXY INVÁLIDO OU OFFLINE", "warning");
             }
         } catch (err) {
-            showProxyStatus('error', '❌ Erro', err.message);
-            showToast("❌ Erro: " + err.message, "error");
+            showProxyStatus('error', '>> ERRO DE CONEXÃO', err.message);
+            showToast("ERRO: " + err.message, "error");
         } finally {
             setProxyBtn.disabled = false;
-            setProxyText.textContent = "Definir";
+            setProxyText.textContent = "DEFINIR";
         }
     });
 
-    // ========== LIMPAR PROXY ==========
+    // LIMPAR PROXY
     document.getElementById("clearProxy").addEventListener("click", async () => {
         proxyInput.value = "";
         proxyStatus.classList.remove('show');
@@ -294,14 +496,14 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ proxy: "" })
         });
-        showToast("✅ Proxy removido", "success");
+        showToast("PROXY REMOVIDO", "success");
         localStorage.removeItem('savedProxy');
     });
 
-    // ========== NAVEGAR ==========
+    // NAVEGAR
     function abrirUrl() {
         const url = urlInput.value.trim();
-        if (!url) { showToast("Digite uma URL!", "warning"); return; }
+        if (!url) { showToast("INSIRA UMA URL", "warning"); return; }
 
         let finalUrl = url;
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -310,23 +512,23 @@
 
         currentUrl = finalUrl;
         iframe.src = "/proxy?url=" + encodeURIComponent(finalUrl);
-        showToast("⏳ Carregando...", "success");
+        showToast("CARREGANDO...", "success");
     }
 
     document.getElementById("go").addEventListener("click", abrirUrl);
     urlInput.addEventListener("keypress", (e) => { if (e.key === "Enter") abrirUrl(); });
 
-    // ========== RECARREGAR ==========
+    // RECARREGAR
     document.getElementById("reload").addEventListener("click", () => {
         if (currentUrl) {
             iframe.src = "/proxy?url=" + encodeURIComponent(currentUrl);
-            showToast("🔄 Recarregando...", "success");
+            showToast("RECARREGANDO...", "success");
         } else {
-            showToast("Nenhuma página carregada", "warning");
+            showToast("NENHUMA PÁGINA CARREGADA", "warning");
         }
     });
 
-    // ========== RESTAURAR PROXY SALVO ==========
+    // RESTAURAR PROXY SALVO
     const savedProxy = localStorage.getItem('savedProxy');
     if (savedProxy) proxyInput.value = savedProxy;
 </script>
