@@ -4,10 +4,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
-import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
-import { baremuxPath } from "@mercuryworkshop/bare-mux";
-
-// Para o wisp server (necessário para UV funcionar completamente)
 import wisp from "wisp-server-node";
 
 const app = express();
@@ -20,18 +16,18 @@ const __dirname = path.dirname(__filename);
 app.use(compression());
 app.use(express.static(__dirname));
 
-// Servir arquivos do Ultraviolet
+// Servir arquivos do Ultraviolet (frontend)
 app.use("/uv/", express.static(uvPath));
 
-// Rota principal
+// Página inicial
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Criar servidor HTTP (necessário para o Wisp)
+// Criar servidor HTTP + WebSocket
 const server = createServer(app);
 
-// Configurar WebSocket do Wisp (Ultraviolet precisa disso)
+// Wisp – encaminha WebSocket para o Ultraviolet
 server.on("upgrade", (req, socket, head) => {
     if (req.url.endsWith("/wisp/")) {
         wisp.routeRequest(req, socket, head);
