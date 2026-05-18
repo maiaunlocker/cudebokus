@@ -14,11 +14,16 @@ const PORT = process.env.PORT || 8080;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ==================== MIDDLEWARES ====================
 app.use(compression());
 app.use(express.json());
 app.use(express.static(__dirname));
+
+// ==================== ULTRAVIOLET ====================
+// Servir arquivos estáticos do UV
 app.use("/uv/", express.static(uvPath));
 
+// ==================== PROXY UPSTREAM ====================
 let UPSTREAM_PROXY = "";
 
 function getAgent(proxy) {
@@ -35,84 +40,79 @@ function getAgent(proxy) {
     }
 }
 
+// ==================== ROTA PRINCIPAL ====================
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// ==================== VALIDAÇÃO DO PROXY ====================
 app.post("/set-proxy", async (req, res) => {
     const { proxy } = req.body;
+
     if (!proxy) {
         UPSTREAM_PROXY = "";
+        console.log('[PROXY] Proxy removido');
         return res.json({ success: true, proxy: "removido" });
     }
+
     UPSTREAM_PROXY = proxy.trim();
-    const agent = getAgent(UPSTREAM_PROXY);
-    try {
-        const resp = await fetch("https://www.google.com", { agent, redirect: "follow", timeout: 10000 });
-        res.json({ success: true, proxy: UPSTREAM_PROXY, status: resp.status, tested: true });
-    } catch (err) {
-        res.json({ success: false, proxy: UPSTREAM_PROXY, error: err.message, tested: false });
-    }
-});
+    console.log('[PROXY] Configurado:', UPSTREAM_PROXY);
 
-app.use("/uv/service/", async (req, res) => {
-    const bareURL = req.headers["x-bare-url"];
-    if (!bareURL) return res.status(400).send("Missing X-Bare-URL header");
-
-    const targetURL = decodeURIComponent(bareURL);
     const agent = getAgent(UPSTREAM_PROXY);
 
     try {
-        const reqHeaders = {};
-        if (req.headers["x-bare-headers"]) {
-            try { Object.assign(reqHeaders, JSON.parse(req.headers["x-bare-headers"])); } catch (e) {}
-        }
-        if (!reqHeaders["user-agent"]) {
-            reqHeaders["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-        }
-
-        const fetchOptions = {
-            method: req.method,
-            headers: reqHeaders,
+        const resp = await fetch("https://www.google.com", {
             agent,
             redirect: "follow",
-            timeout: 30000
-        };
-        if (req.method === "POST" || req.method === "PUT") fetchOptions.body = req.body;
-
-        const response = await fetch(targetURL, fetchOptions);
-
-        const resHeaders = {};
-        response.headers.forEach((value, key) => {
-            const lowerKey = key.toLowerCase();
-            if (["content-encoding","content-security-policy","content-security-policy-report-only","x-frame-options","access-control-allow-origin","access-control-allow-credentials"].includes(lowerKey)) return;
-            resHeaders[key] = value;
+            timeout: 10000
         });
-        resHeaders["x-bare-status"] = response.status;
-        resHeaders["x-bare-status-text"] = response.statusText;
-
-        res.writeHead(response.status, response.statusText, resHeaders);
-        const buffer = Buffer.from(await response.arrayBuffer());
-        res.end(buffer);
+        console.log('[PROXY] ✅ Testado com sucesso. Status:', resp.status);
+        res.json({
+            success: true,
+            proxy: UPSTREAM_PROXY,
+            status: resp.status,
+            tested: true
+        });
     } catch (err) {
-        console.error("[BARE-ERROR]", err.message);
-        res.writeHead(500, { "x-bare-status": 500, "x-bare-status-text": "Internal Server Error", "content-type": "text/plain" });
-        res.end("Bare server error: " + err.message);
+        console.error('[PROXY] ❌ Falhou:', err.message);
+        res.json({
+            success: false,
+            proxy: UPSTREAM_PROXY,
+            error: err.message,
+            tested: false
+        });
     }
 });
 
+// ==================== SERVIDOR HTTP + WISP ====================
 const server = createServer(app);
 
+// O Wisp intercepta WebSocket e o UV usa isso para fazer
+// todas as requisições (CSS, JS, imagens, etc)
 server.on("upgrade", (req, socket, head) => {
-    if (req.url.endsWith("/wisp/")) wisp.routeRequest(req, socket, head);
+    if (req.url.endsWith("/wisp/")) {
+        console.log('[WISP] Conexão WebSocket recebida');
+        wisp.routeRequest(req, socket, head);
+    } else {
+        socket.destroy();
+    }
 });
 
 server.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════╗
-║   🚀 Web Proxy (UV + Proxy Upstream) ║
+║   🚀 Web Proxy (UV + Wisp)           ║
 ║   📡 Porta: ${PORT}                      ║
 ║   🌐 URL: http://localhost:${PORT}      ║
 ╚═══════════════════════════════════════╝
     `);
+});
+
+// ==================== ERROS GLOBAIS ====================
+process.on('unhandledRejection', (err) => {
+    console.error('[ERRO]', err.message);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[EXCEÇÃO]', err.message);
 });
