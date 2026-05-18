@@ -107,6 +107,7 @@
             border-radius: 12px;
             padding: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
 
         iframe {
@@ -146,6 +147,28 @@
         .toast.error { background: #dc3545; }
         .toast.warning { background: #ffc107; color: #333; }
 
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         @media (max-width: 768px) {
             .header h1 { 
                 font-size: 2em; 
@@ -176,6 +199,7 @@
             <div class="input-wrapper">
                 <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT">
                 <button id="setProxy">Definir</button>
+                <button id="clearProxy" style="background: #dc3545;">Limpar</button>
             </div>
         </div>
 
@@ -184,12 +208,13 @@
             <div class="input-wrapper">
                 <input id="url" type="text" placeholder="https://exemplo.com">
                 <button id="go">Ir</button>
+                <button id="reload" style="background: #6c757d;">Recarregar</button>
             </div>
         </div>
     </div>
 
     <div class="iframe-container">
-        <iframe id="frame"></iframe>
+        <iframe id="frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -199,6 +224,7 @@
         const urlInput = document.getElementById("url");
         const iframe = document.getElementById("frame");
         const toast = document.getElementById("toast");
+        let currentUrl = null;
 
         // Função de notificação
         function showToast(message, type = 'success') {
@@ -213,7 +239,10 @@
         // Configurar proxy
         document.getElementById("setProxy").addEventListener("click", async () => {
             const proxy = proxyInput.value.trim();
-            if (!proxy) return showToast("Digite um proxy válido", "warning");
+            if (!proxy) {
+                showToast("Digite um proxy válido", "warning");
+                return;
+            }
 
             try {
                 const res = await fetch("/set-proxy", {
@@ -221,39 +250,94 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ proxy })
                 });
-                const data = await res.json();
-                
-                if (data.success) {
-                    showToast("✅ Proxy configurado!", "success");
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    data = { success: true, proxy: proxy };
+                }
+
+                if (data.success || res.ok) {
+                    showToast("✅ Proxy configurado com sucesso!", "success");
                 } else {
-                    showToast("⚠️ Proxy configurado (não testado)", "warning");
+                    showToast("⚠️ Proxy configurado (verifique a conexão)", "warning");
                 }
             } catch (err) {
-                showToast("❌ Erro: " + err.message, "error");
+                showToast("❌ Erro ao configurar: " + err.message, "error");
+            }
+        });
+
+        // Limpar proxy
+        document.getElementById("clearProxy").addEventListener("click", async () => {
+            proxyInput.value = "";
+            try {
+                await fetch("/set-proxy", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ proxy: "" })
+                });
+                showToast("✅ Proxy removido", "success");
+            } catch (err) {
+                showToast("❌ Erro ao limpar proxy", "error");
             }
         });
 
         // Carregar URL
         document.getElementById("go").addEventListener("click", () => {
             const url = urlInput.value.trim();
-            if (!url) return showToast("Digite uma URL!", "warning");
-            
+            if (!url) {
+                showToast("Digite uma URL!", "warning");
+                return;
+            }
+
             let finalUrl = url;
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
                 finalUrl = 'https://' + url;
             }
-            
+
+            currentUrl = finalUrl;
             iframe.src = "/proxy?url=" + encodeURIComponent(finalUrl);
-            showToast("Carregando...", "success");
+            showToast("⏳ Carregando...", "success");
         });
 
-        // Enter para enviar
+        // Recarregar página
+        document.getElementById("reload").addEventListener("click", () => {
+            if (currentUrl) {
+                iframe.src = "/proxy?url=" + encodeURIComponent(currentUrl);
+                showToast("🔄 Recarregando...", "success");
+            } else {
+                showToast("Nenhuma página carregada", "warning");
+            }
+        });
+
+        // Enter para enviar URL
         urlInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("go").click();
+            if (e.key === "Enter") {
+                document.getElementById("go").click();
+            }
         });
 
+        // Enter para enviar Proxy
         proxyInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("setProxy").click();
+            if (e.key === "Enter") {
+                document.getElementById("setProxy").click();
+            }
+        });
+
+        // Restaurar proxy da sessão anterior
+        const savedProxy = localStorage.getItem('savedProxy');
+        if (savedProxy) {
+            proxyInput.value = savedProxy;
+        }
+
+        // Salvar proxy quando configurar
+        const originalSetProxy = document.getElementById("setProxy").onclick;
+        document.getElementById("setProxy").addEventListener("click", () => {
+            const proxy = proxyInput.value.trim();
+            if (proxy) {
+                localStorage.setItem('savedProxy', proxy);
+            }
         });
     </script>
 </body>
