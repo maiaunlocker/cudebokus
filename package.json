@@ -5,19 +5,15 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
-    "@mercuryworkshop/epoxy-transport": "^1.0.0",
-    "@mercuryworkshop/bare-mux": "^1.0.0",
     "compression": "^1.8.1",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2",
-    "wisp-server-node": "^1.0.0"
+    "express": "^4.18.2",
+    "wisp-server-node": "^1.0.5"
   }
 }
