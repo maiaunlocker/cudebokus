@@ -1,245 +1,451 @@
-import express from "express";
-import fetch from "node-fetch";
-import { HttpsProxyAgent } from "https-proxy-agent";
-import { SocksProxyAgent } from "socks-proxy-agent";
-import compression from "compression";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const app = express();
-const PORT = process.env.PORT || 8080;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(compression());
-app.use(express.static(__dirname));
-
-// Desabilitar verificação SSL (apenas para desenvolvimento)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-// Variável global do proxy
-let UPSTREAM_PROXY = "";
-
-// Função para criar agente apropriado
-function getAgent(proxy) {
-    if (!proxy) return undefined;
-
-    try {
-        if (proxy.startsWith('socks')) {
-            return new SocksProxyAgent(proxy);
-        } else {
-            return new HttpsProxyAgent(proxy);
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Cu de B0kus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    } catch (err) {
-        console.error("Erro ao criar agente:", err.message);
-        return undefined;
-    }
-}
 
-// Servir index.html
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-});
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
 
-// Endpoint para configurar proxy
-app.post("/set-proxy", async (req, res) => {
-    const { proxy } = req.body;
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
 
-    if (!proxy) {
-        UPSTREAM_PROXY = "";
-        return res.json({ 
-            success: true, 
-            proxy: "removido",
-            message: "Proxy removido com sucesso"
-        });
-    }
+        .header h1 {
+            font-size: 3em;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
 
-    UPSTREAM_PROXY = proxy.trim();
-    const agent = getAgent(UPSTREAM_PROXY);
+        .controls {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto 20px;
+        }
 
-    // Testar proxy
-    try {
-        const response = await fetch("https://www.google.com", {
-            agent,
-            redirect: "follow",
-            timeout: 10000
-        });
+        .input-group {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
 
-        res.json({
-            success: true,
-            proxy: UPSTREAM_PROXY,
-            status: response.status,
-            tested: true,
-            message: "Proxy testado e funcionando"
-        });
-    } catch (err) {
-        console.error("Erro ao testar proxy:", err.message);
-        res.json({
-            success: false,
-            proxy: UPSTREAM_PROXY,
-            error: err.message,
-            tested: false,
-            message: "Proxy configurado mas não testado"
-        });
-    }
-});
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
 
-// Proxy principal
-app.get("/proxy", async (req, res) => {
-    const url = req.query.url;
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
 
-    if (!url) {
-        return res.status(400).send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Erro</title>
-                <style>
-                    body { font-family: Arial; padding: 40px; text-align: center; background: #f8f9fa; }
-                    h2 { color: #dc3545; }
-                </style>
-            </head>
-            <body>
-                <h2>❌ URL inválida ou não fornecida</h2>
-                <p>Volte e digite uma URL válida.</p>
-            </body>
-            </html>
-        `);
-    }
+        input[type="text"] {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
 
-    const agent = getAgent(UPSTREAM_PROXY);
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
 
-    try {
-        console.log(`[PROXY] Acessando: ${url} ${UPSTREAM_PROXY ? `via ${UPSTREAM_PROXY}` : 'direto'}`);
+        button {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
 
-        const response = await fetch(url, {
-            agent,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            redirect: 'follow',
-            timeout: 30000
-        });
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(42, 82, 152, 0.4);
+        }
 
-        const contentType = response.headers.get('content-type') || '';
+        button:active {
+            transform: translateY(0);
+        }
 
-        // Se for HTML, fazer reescrita de URLs
-        if (contentType.includes('text/html')) {
-            let html = await response.text();
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
-            // Reescrever URLs relativas para usar o proxy
-            const baseUrl = new URL(url);
+        /* Status do Proxy */
+        .proxy-status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .proxy-status.show {
+            display: flex;
+        }
+
+        .proxy-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .proxy-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .proxy-status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+
+        .status-icon {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .status-text strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .status-text small {
+            opacity: 0.8;
+            display: block;
+        }
+
+        /* Spinner */
+        .spinner {
+            border: 3px solid rgba(23, 162, 184, 0.3);
+            border-top: 3px solid #17a2b8;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .iframe-container {
+            flex: 1;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 600px;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            display: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
+        .toast.warning { background: #ffc107; color: #333; }
+
+        @media (max-width: 768px) {
+            .header h1 { 
+                font-size: 2em; 
+            }
             
-            // Reescrever href e src
-            html = html.replace(/href=["']\/([^"']*?)["']/g, (match, path) => {
-                if (path.startsWith('http')) return match;
-                return `href="/proxy?url=${encodeURIComponent(baseUrl.origin + '/' + path)}"`;
-            });
+            .input-wrapper { 
+                flex-direction: column; 
+            }
+            
+            button {
+                width: 100%;
+            }
 
-            html = html.replace(/src=["']\/([^"']*?)["']/g, (match, path) => {
-                if (path.startsWith('http')) return match;
-                return `src="/proxy?url=${encodeURIComponent(baseUrl.origin + '/' + path)}"`;
-            });
+            iframe {
+                min-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>O Cu de B0kus</h1>
+    </div>
 
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.send(html);
-        } else {
-            // Para outros tipos, apenas repassar
-            const buffer = await response.buffer();
-            res.setHeader('Content-Type', contentType);
-            res.setHeader('Content-Length', buffer.length);
-            res.send(buffer);
+    <div class="controls">
+        <div class="input-group">
+            <label>🔧 Proxy</label>
+            <div class="input-wrapper">
+                <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT">
+                <button id="setProxy">
+                    <span id="setProxyText">Definir</span>
+                </button>
+                <button id="clearProxy" style="background: #dc3545;">Limpar</button>
+            </div>
+            <!-- Status do Proxy -->
+            <div id="proxyStatus" class="proxy-status">
+                <div class="status-icon" id="proxyIcon"></div>
+                <div class="status-text">
+                    <strong id="proxyStatusTitle"></strong>
+                    <small id="proxyStatusMsg"></small>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>🌐 Endereço</label>
+            <div class="input-wrapper">
+                <input id="url" type="text" placeholder="https://exemplo.com">
+                <button id="go">Ir</button>
+                <button id="reload" style="background: #6c757d;">Recarregar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="iframe-container">
+        <iframe id="frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const proxyInput = document.getElementById("proxy");
+        const urlInput = document.getElementById("url");
+        const iframe = document.getElementById("frame");
+        const toast = document.getElementById("toast");
+        const proxyStatus = document.getElementById("proxyStatus");
+        const proxyIcon = document.getElementById("proxyIcon");
+        const proxyStatusTitle = document.getElementById("proxyStatusTitle");
+        const proxyStatusMsg = document.getElementById("proxyStatusMsg");
+        const setProxyBtn = document.getElementById("setProxy");
+        const setProxyText = document.getElementById("setProxyText");
+        let currentUrl = null;
+
+        // Função de notificação
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
         }
 
-    } catch (err) {
-        console.error("[ERRO]", err.message);
-        res.status(500).send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Erro no Proxy</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        padding: 40px; 
-                        text-align: center; 
-                        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                        color: white;
-                    }
-                    h2 { color: #ff6b6b; margin-bottom: 20px; }
-                    .error-box {
-                        background: rgba(0,0,0,0.3);
-                        padding: 20px;
-                        border-radius: 10px;
-                        margin: 20px auto;
-                        max-width: 500px;
-                    }
-                    .error-detail {
-                        font-family: monospace;
-                        background: rgba(0,0,0,0.5);
-                        padding: 10px;
-                        border-radius: 5px;
-                        margin: 10px 0;
-                        text-align: left;
-                        overflow-wrap: break-word;
-                    }
-                </style>
-            </head>
-            <body>
-                <h2>❌ Erro ao carregar página</h2>
-                <div class="error-box">
-                    <p><strong>Erro:</strong></p>
-                    <div class="error-detail">${escapeHtml(err.message)}</div>
-                    <p><strong>URL:</strong></p>
-                    <div class="error-detail">${escapeHtml(url)}</div>
-                    ${UPSTREAM_PROXY ? `
-                        <p><strong>Proxy:</strong></p>
-                        <div class="error-detail">${escapeHtml(UPSTREAM_PROXY)}</div>
-                    ` : ''}
-                    <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
-                        Verifique se a URL está correta e se o proxy está funcionando.
-                    </p>
-                </div>
-            </body>
-            </html>
-        `);
-    }
-});
+        // Mostrar status do proxy
+        function showProxyStatus(type, title, message) {
+            proxyStatus.className = `proxy-status show ${type}`;
+            proxyStatusTitle.textContent = title;
+            proxyStatusMsg.textContent = message;
 
-// Função para escapar HTML
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
+            if (type === 'success') {
+                proxyIcon.innerHTML = '✅';
+            } else if (type === 'error') {
+                proxyIcon.innerHTML = '❌';
+            } else if (type === 'loading') {
+                proxyIcon.innerHTML = '<div class="spinner"></div>';
+            }
+        }
 
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════╗
-║   🚀 Web Proxy Servidor Iniciado     ║
-║   📡 Porta: ${PORT}                      ║
-║   🌐 URL: http://localhost:${PORT}      ║
-╚═══════════════════════════════════════╝
-    `);
-});
+        // Configurar proxy
+        document.getElementById("setProxy").addEventListener("click", async () => {
+            const proxy = proxyInput.value.trim();
+            if (!proxy) {
+                showToast("Digite um proxy válido", "warning");
+                return;
+            }
 
-// Tratamento de erros não capturados
-process.on('unhandledRejection', (err) => {
-    console.error('[ERRO NÃO CAPTURADO]', err);
-});
+            // Mostrar loading
+            setProxyBtn.disabled = true;
+            setProxyText.textContent = "Verificando...";
+            showProxyStatus('loading', 'Verificando Proxy', 'Testando conexão...');
 
-process.on('uncaughtException', (err) => {
-    console.error('[EXCEÇÃO NÃO CAPTURADA]', err);
-});
+            try {
+                const res = await fetch("/set-proxy", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ proxy })
+                });
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    data = { success: true, proxy: proxy };
+                }
+
+                // Simular um pequeno delay para melhor UX
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (data.success) {
+                    showProxyStatus(
+                        'success',
+                        '✅ Proxy Aprovado!',
+                        `Proxy funcionando corretamente. Status: ${data.status || '200'}`
+                    );
+                    showToast("✅ Proxy configurado com sucesso!", "success");
+                    localStorage.setItem('savedProxy', proxy);
+                } else {
+                    showProxyStatus(
+                        'error',
+                        '❌ Proxy Recusado',
+                        `Erro: ${data.error || 'Não foi possível validar o proxy'}`
+                    );
+                    showToast("⚠️ Proxy não validado: " + (data.error || "erro desconhecido"), "warning");
+                }
+            } catch (err) {
+                showProxyStatus(
+                    'error',
+                    '❌ Erro na Verificação',
+                    err.message
+                );
+                showToast("❌ Erro: " + err.message, "error");
+            } finally {
+                setProxyBtn.disabled = false;
+                setProxyText.textContent = "Definir";
+            }
+        });
+
+        // Limpar proxy
+        document.getElementById("clearProxy").addEventListener("click", async () => {
+            proxyInput.value = "";
+            proxyStatus.classList.remove('show');
+            try {
+                await fetch("/set-proxy", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ proxy: "" })
+                });
+                showToast("✅ Proxy removido", "success");
+                localStorage.removeItem('savedProxy');
+            } catch (err) {
+                showToast("❌ Erro ao limpar proxy", "error");
+            }
+        });
+
+        // Carregar URL
+        document.getElementById("go").addEventListener("click", () => {
+            const url = urlInput.value.trim();
+            if (!url) {
+                showToast("Digite uma URL!", "warning");
+                return;
+            }
+
+            let finalUrl = url;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                finalUrl = 'https://' + url;
+            }
+
+            currentUrl = finalUrl;
+            iframe.src = "/proxy?url=" + encodeURIComponent(finalUrl);
+            showToast("⏳ Carregando...", "success");
+        });
+
+        // Recarregar página
+        document.getElementById("reload").addEventListener("click", () => {
+            if (currentUrl) {
+                iframe.src = "/proxy?url=" + encodeURIComponent(currentUrl);
+                showToast("🔄 Recarregando...", "success");
+            } else {
+                showToast("Nenhuma página carregada", "warning");
+            }
+        });
+
+        // Enter para enviar URL
+        urlInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                document.getElementById("go").click();
+            }
+        });
+
+        // Enter para enviar Proxy
+        proxyInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                document.getElementById("setProxy").click();
+            }
+        });
+
+        // Restaurar proxy da sessão anterior
+        const savedProxy = localStorage.getItem('savedProxy');
+        if (savedProxy) {
+            proxyInput.value = savedProxy;
+        }
+    </script>
+</body>
+</html>
