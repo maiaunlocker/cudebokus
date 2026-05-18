@@ -1,24 +1,23 @@
 {
   "name": "meu-proxy",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Web Proxy com Ultraviolet",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
+    "@mercuryworkshop/epoxy-transport": "^1.0.0",
+    "@mercuryworkshop/bare-mux": "^1.0.0",
     "compression": "^1.8.1",
     "express": "^5.1.0",
-    "express-http-proxy": "^2.1.2",
-    "http-proxy-agent": "^7.0.2",
-    "https-proxy-agent": "^7.0.6",
     "node-fetch": "^3.3.2",
-    "socks-proxy-agent": "^8.0.5"
+    "wisp-server-node": "^1.0.0"
   }
 }
