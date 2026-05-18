@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
-import wisp from "wisp-server-node";
+import { Wisp } from "@mercuryworkshop/wisp-js"; // NOVO PACOTE
 import fetch from "node-fetch";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 8080;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ==================== MIDDLEWARES ====================
+// Middlewares
 app.use(compression());
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -79,22 +79,16 @@ app.post("/set-proxy", async (req, res) => {
 });
 
 // ==================== BARE SERVER ====================
-// Intercepta as requisições do UV e aplica o proxy upstream
 app.use("/uv/service/", async (req, res) => {
-    // Só aceitar requisições do UV (com header X-Bare-URL)
     const bareURL = req.headers["x-bare-url"];
     if (!bareURL) {
         return res.status(400).send("Missing X-Bare-URL header");
     }
 
-    // Decodificar URL alvo
     const targetURL = decodeURIComponent(bareURL);
-
-    // Recuperar agent do proxy configurado
     const agent = getAgent(UPSTREAM_PROXY);
 
     try {
-        // Construir headers para a requisição real
         const reqHeaders = {};
         if (req.headers["x-bare-headers"]) {
             try {
@@ -102,14 +96,11 @@ app.use("/uv/service/", async (req, res) => {
                 Object.assign(reqHeaders, bareHeaders);
             } catch (e) {}
         }
-
-        // Adicionar user-agent se necessário
         if (!reqHeaders["user-agent"]) {
             reqHeaders["user-agent"] =
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
         }
 
-        // Opções da requisição
         const fetchOptions = {
             method: req.method,
             headers: reqHeaders,
@@ -118,19 +109,15 @@ app.use("/uv/service/", async (req, res) => {
             timeout: 30000
         };
 
-        // Se houver body, incluir
         if (req.method === "POST" || req.method === "PUT") {
-            fetchOptions.body = req.body; // express já parseou
+            fetchOptions.body = req.body;
         }
 
-        // Fazer a requisição real
         const response = await fetch(targetURL, fetchOptions);
 
-        // Construir headers de resposta (removendo bloqueadores)
         const resHeaders = {};
         response.headers.forEach((value, key) => {
             const lowerKey = key.toLowerCase();
-            // Remover headers que quebram o proxy
             if (
                 lowerKey === "content-encoding" ||
                 lowerKey === "content-security-policy" ||
@@ -144,14 +131,10 @@ app.use("/uv/service/", async (req, res) => {
             resHeaders[key] = value;
         });
 
-        // Adicionar headers do bare protocol
         resHeaders["x-bare-status"] = response.status;
         resHeaders["x-bare-status-text"] = response.statusText;
 
-        // Enviar resposta
         res.writeHead(response.status, response.statusText, resHeaders);
-
-        // Pipe do corpo
         const buffer = Buffer.from(await response.arrayBuffer());
         res.end(buffer);
     } catch (err) {
@@ -165,13 +148,10 @@ app.use("/uv/service/", async (req, res) => {
     }
 });
 
-// ==================== SERVIDOR HTTP/WISP ====================
+// ==================== SERVIDOR HTTP + WISP ====================
 const server = createServer(app);
-
-server.on("upgrade", (req, socket, head) => {
-    if (req.url.endsWith("/wisp/")) {
-        wisp.routeRequest(req, socket, head);
-    }
+const wispServer = new Wisp(server, {
+    path: "/wisp/"
 });
 
 server.listen(PORT, () => {
