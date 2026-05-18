@@ -148,29 +148,52 @@ function resolverUrl(urlAtributo, baseUrl) {
  * Remove headers de segurança que podem bloquear o proxy
  */
 function removerHeadersBlockeadores(headers) {
-    const headersLimpezados = new Map(headers);
+    const headersLimpos = new Map(headers);
     
-    // Remove headers CSP (Content Security Policy)
-    headersLimpezados.delete('content-security-policy');
-    headersLimpezados.delete('content-security-policy-report-only');
+    // Remove CSP (Content Security Policy)
+    headersLimpos.delete('content-security-policy');
+    headersLimpos.delete('content-security-policy-report-only');
     
-    // Remove headers de frameamento
-    headersLimpezados.delete('x-frame-options');
+    // Remove bloqueio de frames
+    headersLimpos.delete('x-frame-options');
     
-    // Remove CORS headers para evitar bloqueios
-    headersLimpezados.delete('access-control-allow-origin');
-    headersLimpezados.delete('access-control-allow-credentials');
+    // Remove headers CORS restritivos
+    headersLimpos.delete('access-control-allow-origin');
+    headersLimpos.delete('access-control-allow-credentials');
     
-    // Remove headers que indicam compressão (já descomprimidos)
-    headersLimpezados.delete('content-encoding');
+    // Remove compressão (já descomprimido)
+    headersLimpos.delete('content-encoding');
     
-    // Remove headers de cache para forçar recarregamento
-    headersLimpezados.delete('cache-control');
-    headersLimpezados.delete('expires');
-    headersLimpezados.delete('pragma');
+    // Remove cache para evitar problemas
+    headersLimpos.delete('cache-control');
+    headersLimpos.delete('expires');
+    headersLimpos.delete('pragma');
+    
+    // Remove headers que podem interferir nos tipos MIME
+    headersLimpos.delete('x-content-type-options');
     
     console.log('[HEADERS] Headers de segurança removidos');
-    return headersLimpezados;
+    return headersLimpos;
+}
+
+/**
+ * Remove atributos de segurança incompatíveis com proxy (integrity, nonce)
+ */
+function removerAtributosSeguranca(html) {
+    // Remove atributos integrity (causam bloqueios de CSS/JS)
+    let resultado = html.replace(/integrity="[^"]*"/gi, '');
+    
+    // Remove atributos nonce (incompatíveis com CSP após reescrita)
+    resultado = resultado.replace(/nonce="[^"]*"/gi, '');
+    
+    // Remove atributos crossorigin se estiverem "anonymous" (pode causar bloqueios)
+    resultado = resultado.replace(/crossorigin="anonymous"/gi, '');
+    
+    // Remove atributo referrerpolicy que pode bloquear carregamento
+    resultado = resultado.replace(/referrerpolicy="[^"]*"/gi, '');
+    
+    console.log('[ATRIBUTOS] Atributos de segurança removidos/limpos');
+    return resultado;
 }
 
 /**
@@ -178,6 +201,9 @@ function removerHeadersBlockeadores(headers) {
  */
 function reescreverUrlsHTML(html, baseUrl) {
     console.log('[REESCREVER-HTML] Iniciando reescrita de URLs...');
+
+    // Primeiro remove atributos problematicos
+    html = removerAtributosSeguranca(html);
 
     // ========== REESCREVER HREF ==========
     html = html.replace(/href=["']([^"']*?)["']/g, (match, urlAtributo) => {
@@ -230,14 +256,20 @@ function reescreverUrlsHTML(html, baseUrl) {
         if (!urlCompleta) return match;
         
         console.log(`[LINK] ${urlAtributo.substring(0, 50)}`);
-        return `<link ${antes}href="/proxy?url=${encodeURIComponent(urlCompleta)}"${depois}>`;
+        // Remove integridade/nonce destes específicos novamente (garantia)
+        let tagAntes = antes.replace(/integrity="[^"]*"/gi, '').replace(/nonce="[^"]*"/gi, '');
+        let tagDepois = depois.replace(/integrity="[^"]*"/gi, '').replace(/nonce="[^"]*"/gi, '');
+        return `<link ${tagAntes}href="/proxy?url=${encodeURIComponent(urlCompleta)}"${tagDepois}>`;
     });
 
     // ========== REESCREVER STYLE TAGS (CSS inline) ==========
     html = html.replace(/<style[^>]*?>([\s\S]*?)<\/style>/gi, (match, css) => {
         console.log('[STYLE] Reescrevendo CSS inline...');
+        // Remove nonce se houver
+        let tagAberta = match.split('>')[0];
+        tagAberta = tagAberta.replace(/nonce="[^"]*"/gi, '');
         const cssReescrito = reescreverUrlsCSS(css, baseUrl);
-        return `<style>${cssReescrito}</style>`;
+        return `${tagAberta}>${cssReescrito}</style>`;
     });
 
     // ========== REMOVER CSP META TAGS ==========
@@ -407,7 +439,9 @@ app.get("/proxy", async (req, res) => {
             
             // Copiar headers permitidos
             headersLimpos.forEach((value, key) => {
-                res.setHeader(key, value);
+                if (key !== 'content-length') {
+                    res.setHeader(key, value);
+                }
             });
 
             res.send(html);
@@ -426,7 +460,9 @@ app.get("/proxy", async (req, res) => {
             
             // Copiar headers permitidos
             headersLimpos.forEach((value, key) => {
-                res.setHeader(key, value);
+                if (key !== 'content-length') {
+                    res.setHeader(key, value);
+                }
             });
             
             res.send(css);
@@ -436,7 +472,6 @@ app.get("/proxy", async (req, res) => {
             // ========== PARA OUTROS TIPOS (imagens, fonts, JS, etc) ==========
             console.log('[ARQUIVO] Servindo arquivo direto...');
             
-            // Usar .arrayBuffer() em vez de .buffer() (mais moderno)
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             
