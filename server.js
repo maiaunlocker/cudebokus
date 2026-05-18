@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
+app.use(express.static(__dirname));
 
 // Desabilitar verificação SSL (apenas para desenvolvimento)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -26,7 +27,7 @@ let UPSTREAM_PROXY = "";
 // Função para criar agente apropriado
 function getAgent(proxy) {
     if (!proxy) return undefined;
-    
+
     try {
         if (proxy.startsWith('socks')) {
             return new SocksProxyAgent(proxy);
@@ -47,10 +48,14 @@ app.get("/", (req, res) => {
 // Endpoint para configurar proxy
 app.post("/set-proxy", async (req, res) => {
     const { proxy } = req.body;
-    
+
     if (!proxy) {
         UPSTREAM_PROXY = "";
-        return res.json({ success: true, proxy: "removido" });
+        return res.json({ 
+            success: true, 
+            proxy: "removido",
+            message: "Proxy removido com sucesso"
+        });
     }
 
     UPSTREAM_PROXY = proxy.trim();
@@ -58,24 +63,27 @@ app.post("/set-proxy", async (req, res) => {
 
     // Testar proxy
     try {
-        const response = await fetch("https://www.google.com", { 
-            agent, 
+        const response = await fetch("https://www.google.com", {
+            agent,
             redirect: "follow",
             timeout: 10000
         });
-        
+
         res.json({
             success: true,
             proxy: UPSTREAM_PROXY,
             status: response.status,
-            tested: true
+            tested: true,
+            message: "Proxy testado e funcionando"
         });
     } catch (err) {
+        console.error("Erro ao testar proxy:", err.message);
         res.json({
             success: false,
             proxy: UPSTREAM_PROXY,
             error: err.message,
-            tested: false
+            tested: false,
+            message: "Proxy configurado mas não testado"
         });
     }
 });
@@ -83,57 +91,138 @@ app.post("/set-proxy", async (req, res) => {
 // Proxy principal
 app.get("/proxy", async (req, res) => {
     const url = req.query.url;
-    
+
     if (!url) {
-        return res.status(400).send("❌ URL inválida ou não fornecida");
+        return res.status(400).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Erro</title>
+                <style>
+                    body { font-family: Arial; padding: 40px; text-align: center; background: #f8f9fa; }
+                    h2 { color: #dc3545; }
+                </style>
+            </head>
+            <body>
+                <h2>❌ URL inválida ou não fornecida</h2>
+                <p>Volte e digite uma URL válida.</p>
+            </body>
+            </html>
+        `);
     }
 
     const agent = getAgent(UPSTREAM_PROXY);
 
     try {
-        console.log(`Acessando: ${url} ${UPSTREAM_PROXY ? `via proxy ${UPSTREAM_PROXY}` : 'direto'}`);
-        
-        const response = await fetch(url, { 
+        console.log(`[PROXY] Acessando: ${url} ${UPSTREAM_PROXY ? `via ${UPSTREAM_PROXY}` : 'direto'}`);
+
+        const response = await fetch(url, {
             agent,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
             redirect: 'follow',
             timeout: 30000
         });
 
         const contentType = response.headers.get('content-type') || '';
-        
+
         // Se for HTML, fazer reescrita de URLs
         if (contentType.includes('text/html')) {
             let html = await response.text();
-            
-            // Reescrever URLs relativas
+
+            // Reescrever URLs relativas para usar o proxy
             const baseUrl = new URL(url);
-            html = html.replace(/(href|src)="\/([^"]*)"/g, 
-                `$1="${baseUrl.origin}/$2"`);
             
+            // Reescrever href e src
+            html = html.replace(/href=["']\/([^"']*?)["']/g, (match, path) => {
+                if (path.startsWith('http')) return match;
+                return `href="/proxy?url=${encodeURIComponent(baseUrl.origin + '/' + path)}"`;
+            });
+
+            html = html.replace(/src=["']\/([^"']*?)["']/g, (match, path) => {
+                if (path.startsWith('http')) return match;
+                return `src="/proxy?url=${encodeURIComponent(baseUrl.origin + '/' + path)}"`;
+            });
+
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(html);
         } else {
             // Para outros tipos, apenas repassar
             const buffer = await response.buffer();
             res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Length', buffer.length);
             res.send(buffer);
         }
-        
+
     } catch (err) {
-        console.error("Erro no proxy:", err.message);
+        console.error("[ERRO]", err.message);
         res.status(500).send(`
-            <div style="font-family: Arial; padding: 40px; text-align: center;">
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Erro no Proxy</title>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        padding: 40px; 
+                        text-align: center; 
+                        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                        color: white;
+                    }
+                    h2 { color: #ff6b6b; margin-bottom: 20px; }
+                    .error-box {
+                        background: rgba(0,0,0,0.3);
+                        padding: 20px;
+                        border-radius: 10px;
+                        margin: 20px auto;
+                        max-width: 500px;
+                    }
+                    .error-detail {
+                        font-family: monospace;
+                        background: rgba(0,0,0,0.5);
+                        padding: 10px;
+                        border-radius: 5px;
+                        margin: 10px 0;
+                        text-align: left;
+                        overflow-wrap: break-word;
+                    }
+                </style>
+            </head>
+            <body>
                 <h2>❌ Erro ao carregar página</h2>
-                <p>${err.message}</p>
-                <p style="color: #666;">URL: ${url}</p>
-                ${UPSTREAM_PROXY ? `<p style="color: #666;">Proxy: ${UPSTREAM_PROXY}</p>` : ''}
-            </div>
+                <div class="error-box">
+                    <p><strong>Erro:</strong></p>
+                    <div class="error-detail">${escapeHtml(err.message)}</div>
+                    <p><strong>URL:</strong></p>
+                    <div class="error-detail">${escapeHtml(url)}</div>
+                    ${UPSTREAM_PROXY ? `
+                        <p><strong>Proxy:</strong></p>
+                        <div class="error-detail">${escapeHtml(UPSTREAM_PROXY)}</div>
+                    ` : ''}
+                    <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
+                        Verifique se a URL está correta e se o proxy está funcionando.
+                    </p>
+                </div>
+            </body>
+            </html>
         `);
     }
 });
+
+// Função para escapar HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
 
 // Iniciar servidor
 app.listen(PORT, () => {
@@ -144,4 +233,13 @@ app.listen(PORT, () => {
 ║   🌐 URL: http://localhost:${PORT}      ║
 ╚═══════════════════════════════════════╝
     `);
+});
+
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (err) => {
+    console.error('[ERRO NÃO CAPTURADO]', err);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[EXCEÇÃO NÃO CAPTURADA]', err);
 });
