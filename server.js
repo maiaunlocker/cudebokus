@@ -110,63 +110,64 @@ function gerarPaginaErro(mensagem, url, proxy = null) {
 }
 
 /**
- * Reescreve URLs relativas e absolutas em HTML
- * @param {string} html - HTML original
- * @param {URL} baseUrl - URL base para resolver URLs relativas
- * @returns {string} - HTML reescrito
+ * Converte URL relativa em absoluta
+ */
+function resolverUrl(urlAtributo, baseUrl) {
+    if (!urlAtributo) return null;
+    
+    // URLs que não devem ser reescritas
+    if (urlAtributo.startsWith('data:') || 
+        urlAtributo.startsWith('javascript:') || 
+        urlAtributo.startsWith('#') || 
+        urlAtributo.startsWith('mailto:') ||
+        urlAtributo.startsWith('tel:')) {
+        return null;
+    }
+
+    let urlCompleta;
+    
+    if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
+        // URL absoluta
+        urlCompleta = urlAtributo;
+    } else if (urlAtributo.startsWith('//')) {
+        // URL relativa ao protocolo
+        urlCompleta = baseUrl.protocol + urlAtributo;
+    } else if (urlAtributo.startsWith('/')) {
+        // URL relativa à raiz
+        urlCompleta = baseUrl.origin + urlAtributo;
+    } else {
+        // URL relativa ao caminho atual
+        try {
+            urlCompleta = new URL(urlAtributo, baseUrl).href;
+        } catch {
+            return null;
+        }
+    }
+
+    return urlCompleta;
+}
+
+/**
+ * Reescreve URLs em HTML e CSS
  */
 function reescreverUrls(html, baseUrl) {
     console.log('[REESCREVER] Iniciando reescrita de URLs...');
 
     // ========== REESCREVER HREF ==========
     html = html.replace(/href=["']([^"']*?)["']/g, (match, urlAtributo) => {
-        if (!urlAtributo || urlAtributo.startsWith('#') || urlAtributo.startsWith('javascript:') || urlAtributo.startsWith('mailto:')) {
-            return match;
-        }
-
-        let urlCompleta;
+        const urlCompleta = resolverUrl(urlAtributo, baseUrl);
+        if (!urlCompleta) return match;
         
-        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
-            // URL absoluta
-            urlCompleta = urlAtributo;
-        } else if (urlAtributo.startsWith('//')) {
-            // URL relativa ao protocolo
-            urlCompleta = baseUrl.protocol + urlAtributo;
-        } else if (urlAtributo.startsWith('/')) {
-            // URL relativa à raiz
-            urlCompleta = baseUrl.origin + urlAtributo;
-        } else {
-            // URL relativa ao caminho atual
-            urlCompleta = new URL(urlAtributo, baseUrl).href;
-        }
-
-        console.log(`[HREF] ${urlAtributo} -> ${urlCompleta}`);
+        console.log(`[HREF] ${urlAtributo}`);
         return `href="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
     // ========== REESCREVER SRC (imagens, scripts, etc) ==========
     html = html.replace(/src=["']([^"']*?)["']/g, (match, urlAtributo) => {
-        if (!urlAtributo || urlAtributo.startsWith('data:') || urlAtributo.startsWith('javascript:')) {
-            return match;
-        }
-
-        let urlCompleta;
+        const urlCompleta = resolverUrl(urlAtributo, baseUrl);
+        if (!urlCompleta) return match;
         
-        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
-            // URL absoluta
-            urlCompleta = urlAtributo;
-        } else if (urlAtributo.startsWith('//')) {
-            // URL relativa ao protocolo
-            urlCompleta = baseUrl.protocol + urlAtributo;
-        } else if (urlAtributo.startsWith('/')) {
-            // URL relativa à raiz
-            urlCompleta = baseUrl.origin + urlAtributo;
-        } else {
-            // URL relativa ao caminho atual
-            urlCompleta = new URL(urlAtributo, baseUrl).href;
-        }
-
-        console.log(`[SRC] ${urlAtributo} -> ${urlCompleta}`);
+        console.log(`[SRC] ${urlAtributo}`);
         return `src="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
@@ -174,91 +175,77 @@ function reescreverUrls(html, baseUrl) {
     html = html.replace(/srcset=["']([^"']*?)["']/g, (match, srcset) => {
         const urls = srcset.split(',').map(item => {
             const [url, size] = item.trim().split(/\s+/);
+            const urlCompleta = resolverUrl(url, baseUrl);
             
-            let urlCompleta;
+            if (!urlCompleta) return item;
             
-            if (url.startsWith('http://') || url.startsWith('https://')) {
-                urlCompleta = url;
-            } else if (url.startsWith('//')) {
-                urlCompleta = baseUrl.protocol + url;
-            } else if (url.startsWith('/')) {
-                urlCompleta = baseUrl.origin + url;
-            } else {
-                urlCompleta = new URL(url, baseUrl).href;
-            }
-
             const novoUrl = `/proxy?url=${encodeURIComponent(urlCompleta)}`;
             return size ? `${novoUrl} ${size}` : novoUrl;
         }).join(', ');
 
-        console.log(`[SRCSET] Reescrito com sucesso`);
+        console.log(`[SRCSET] Reescrito`);
         return `srcset="${urls}"`;
-    });
-
-    // ========== REESCREVER CSS background-image ==========
-    html = html.replace(/background-image:\s*url\(['"]?([^'")]+)['"]?\)/gi, (match, urlCss) => {
-        let urlCompleta;
-        
-        if (urlCss.startsWith('http://') || urlCss.startsWith('https://')) {
-            urlCompleta = urlCss;
-        } else if (urlCss.startsWith('//')) {
-            urlCompleta = baseUrl.protocol + urlCss;
-        } else if (urlCss.startsWith('/')) {
-            urlCompleta = baseUrl.origin + urlCss;
-        } else {
-            urlCompleta = new URL(urlCss, baseUrl).href;
-        }
-
-        console.log(`[CSS-BG] ${urlCss} -> ${urlCompleta}`);
-        return `background-image: url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
     });
 
     // ========== REESCREVER ACTION (formulários) ==========
     html = html.replace(/action=["']([^"']*?)["']/g, (match, urlAtributo) => {
-        if (!urlAtributo || urlAtributo.startsWith('#') || urlAtributo.startsWith('javascript:')) {
-            return match;
-        }
-
-        let urlCompleta;
+        const urlCompleta = resolverUrl(urlAtributo, baseUrl);
+        if (!urlCompleta) return match;
         
-        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
-            urlCompleta = urlAtributo;
-        } else if (urlAtributo.startsWith('//')) {
-            urlCompleta = baseUrl.protocol + urlAtributo;
-        } else if (urlAtributo.startsWith('/')) {
-            urlCompleta = baseUrl.origin + urlAtributo;
-        } else {
-            urlCompleta = new URL(urlAtributo, baseUrl).href;
-        }
-
-        console.log(`[ACTION] ${urlAtributo} -> ${urlCompleta}`);
+        console.log(`[ACTION] ${urlAtributo}`);
         return `action="/proxy?url=${encodeURIComponent(urlCompleta)}"`;
     });
 
-    // ========== REESCREVER LINK (CSS, favicon) ==========
+    // ========== REESCREVER LINK TAGS (CSS, favicon) ==========
     html = html.replace(/<link\s+([^>]*?)href=["']([^"']*?)["']([^>]*?)>/gi, (match, antes, urlAtributo, depois) => {
-        if (!urlAtributo || urlAtributo.startsWith('data:')) {
-            return match;
-        }
-
-        let urlCompleta;
+        const urlCompleta = resolverUrl(urlAtributo, baseUrl);
+        if (!urlCompleta) return match;
         
-        if (urlAtributo.startsWith('http://') || urlAtributo.startsWith('https://')) {
-            urlCompleta = urlAtributo;
-        } else if (urlAtributo.startsWith('//')) {
-            urlCompleta = baseUrl.protocol + urlAtributo;
-        } else if (urlAtributo.startsWith('/')) {
-            urlCompleta = baseUrl.origin + urlAtributo;
-        } else {
-            urlCompleta = new URL(urlAtributo, baseUrl).href;
-        }
-
-        console.log(`[LINK] ${urlAtributo} -> ${urlCompleta}`);
+        console.log(`[LINK] ${urlAtributo}`);
         return `<link ${antes}href="/proxy?url=${encodeURIComponent(urlCompleta)}"${depois}>`;
     });
 
-    console.log('[REESCREVER] ✅ Reescrita completa!');
+    // ========== REESCREVER STYLE TAGS (CSS inline) ==========
+    html = html.replace(/<style[^>]*?>([\s\S]*?)<\/style>/gi, (match, css) => {
+        console.log('[STYLE] Reescrevendo CSS inline...');
+        const cssReescrito = reescreverCSS(css, baseUrl);
+        return `<style>${cssReescrito}</style>`;
+    });
+
+    // ========== REESCREVER ATRIBUTOS STYLE (CSS inline) ==========
+    html = html.replace(/style=["']([^"']*?)["']/g, (match, style) => {
+        console.log('[STYLE-ATTR] Reescrevendo atributo style...');
+        const styleReescrito = reescreverCSS(style, baseUrl);
+        return `style="${styleReescrito}"`;
+    });
+
+    console.log('[REESCREVER] ✅ Reescrita de HTML completa!');
     return html;
+}
+
+/**
+ * Reescreve URLs dentro de CSS
+ */
+function reescreverCSS(css, baseUrl) {
+    // ========== REESCREVER url() ==========
+    css = css.replace(/url\(['"]?([^'")]+)['"]?\)/gi, (match, urlCss) => {
+        const urlCompleta = resolverUrl(urlCss.trim(), baseUrl);
+        if (!urlCompleta) return match;
+        
+        console.log(`[CSS-URL] ${urlCss} -> ${urlCompleta}`);
+        return `url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
+    });
+
+    // ========== REESCREVER @import ==========
+    css = css.replace(/@import\s+(?:url\(['"]?|['"])(https?:\/\/[^'")]+|[^'")]+)['"]?\)?/gi, (match, urlImport) => {
+        const urlCompleta = resolverUrl(urlImport.trim(), baseUrl);
+        if (!urlCompleta) return match;
+        
+        console.log(`[CSS-IMPORT] ${urlImport} -> ${urlCompleta}`);
+        return `@import url('/proxy?url=${encodeURIComponent(urlCompleta)}')`;
+    });
+
+    return css;
 }
 
 // ==================== ROTAS ====================
@@ -379,6 +366,19 @@ app.get("/proxy", async (req, res) => {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(html);
             console.log('[HTML] ✅ HTML servido com sucesso');
+
+        } else if (contentType.includes('text/css')) {
+            // ========== Se for CSS puro, reescrever URLs ==========
+            console.log('[CSS] Processando CSS...');
+            
+            let css = await response.text();
+            const baseUrl = new URL(url);
+            
+            css = reescreverCSS(css, baseUrl);
+            
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            res.send(css);
+            console.log('[CSS] ✅ CSS servido com sucesso');
 
         } else {
             // ========== Para outros tipos, apenas repassar ==========
