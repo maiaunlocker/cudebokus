@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Proxy Avançado</title>
+    <title>O Cu de B0kus</title>
     <style>
         * {
             margin: 0;
@@ -13,160 +13,108 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
             padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
             text-align: center;
+            color: white;
+            margin-bottom: 30px;
         }
 
         .header h1 {
-            font-size: 2.5em;
+            font-size: 3em;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
+            letter-spacing: 2px;
         }
 
         .controls {
-            padding: 30px;
-            background: #f8f9fa;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto 20px;
         }
 
-        .control-group {
-            margin-bottom: 20px;
+        .input-group {
             background: white;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
         }
 
-        .control-group label {
+        .input-group label {
             display: block;
             font-weight: 600;
             margin-bottom: 10px;
             color: #333;
             font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .input-wrapper {
             display: flex;
             gap: 10px;
-            flex-wrap: wrap;
         }
 
         input[type="text"] {
             flex: 1;
-            min-width: 300px;
-            padding: 12px 15px;
+            padding: 14px 18px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 16px;
             transition: all 0.3s;
         }
 
         input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
         }
 
         button {
-            padding: 12px 25px;
+            padding: 14px 30px;
             border: none;
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
+        button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 20px rgba(42, 82, 152, 0.4);
         }
 
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 30px;
-            background: #fff;
-            border-bottom: 2px solid #e0e0e0;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #dc3545;
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.active {
-            background: #28a745;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        button:active {
+            transform: translateY(0);
         }
 
         .iframe-container {
-            padding: 30px;
-            background: #f8f9fa;
+            flex: 1;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         iframe {
             width: 100%;
-            height: 70vh;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            background: white;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            height: 100%;
+            min-height: 600px;
+            border: none;
+            border-radius: 8px;
         }
 
         .toast {
@@ -198,116 +146,50 @@
         .toast.error { background: #dc3545; }
         .toast.warning { background: #ffc107; color: #333; }
 
-        .quick-links {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .quick-link {
-            padding: 8px 15px;
-            background: #e9ecef;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .quick-link:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .history {
-            margin-top: 15px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .history-item {
-            padding: 8px 12px;
-            background: #f8f9fa;
-            margin-bottom: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-item:hover {
-            background: #e9ecef;
-        }
-
-        .history-item .remove {
-            color: #dc3545;
-            font-weight: bold;
-        }
-
         @media (max-width: 768px) {
-            .header h1 { font-size: 1.8em; }
-            .input-wrapper { flex-direction: column; }
-            input[type="text"] { min-width: 100%; }
-            .status-bar { flex-direction: column; align-items: flex-start; }
+            .header h1 { 
+                font-size: 2em; 
+            }
+            
+            .input-wrapper { 
+                flex-direction: column; 
+            }
+            
+            button {
+                width: 100%;
+            }
+
+            iframe {
+                min-height: 400px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Web Proxy Avançado</h1>
-            <p>Navegue com segurança e privacidade através de proxies configuráveis</p>
-        </div>
+    <div class="header">
+        <h1>O Cu de B0kus</h1>
+    </div>
 
-        <div class="status-bar">
-            <div class="status-item">
-                <span class="status-indicator" id="proxyStatus"></span>
-                <span id="proxyText">Sem proxy configurado</span>
-            </div>
-            <div class="status-item">
-                <span>🌐 URL atual: <strong id="currentUrl">Nenhuma</strong></span>
+    <div class="controls">
+        <div class="input-group">
+            <label>🔧 Proxy</label>
+            <div class="input-wrapper">
+                <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT">
+                <button id="setProxy">Definir</button>
             </div>
         </div>
 
-        <div class="controls">
-            <div class="control-group">
-                <label>🔧 Configurar Proxy Upstream</label>
-                <div class="input-wrapper">
-                    <input id="proxy" type="text" placeholder="http://usuario:senha@IP:PORT ou socks5://IP:PORT">
-                    <button class="btn-primary" id="setProxy">Atualizar Proxy</button>
-                    <button class="btn-secondary" id="clearProxy">Limpar Proxy</button>
-                </div>
-                <div class="quick-links">
-                    <span style="font-size: 12px; color: #666;">Exemplos:</span>
-                    <div class="quick-link" onclick="fillProxy('http://proxy.example.com:8080')">HTTP Simples</div>
-                    <div class="quick-link" onclick="fillProxy('http://user:pass@proxy.example.com:8080')">HTTP com Auth</div>
-                    <div class="quick-link" onclick="fillProxy('socks5://127.0.0.1:1080')">SOCKS5</div>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>🌍 URL para Acessar</label>
-                <div class="input-wrapper">
-                    <input id="url" type="text" placeholder="https://exemplo.com">
-                    <button class="btn-primary" id="go">Carregar</button>
-                    <button class="btn-secondary" id="reload">Recarregar</button>
-                </div>
-                <div class="quick-links">
-                    <span style="font-size: 12px; color: #666;">Acesso rápido:</span>
-                    <div class="quick-link" onclick="loadUrl('https://www.google.com')">Google</div>
-                    <div class="quick-link" onclick="loadUrl('https://www.github.com')">GitHub</div>
-                    <div class="quick-link" onclick="loadUrl('https://www.wikipedia.org')">Wikipedia</div>
-                    <div class="quick-link" onclick="loadUrl('https://www.youtube.com')">YouTube</div>
-                </div>
-                <div class="history" id="history"></div>
+        <div class="input-group">
+            <label>🌐 Endereço</label>
+            <div class="input-wrapper">
+                <input id="url" type="text" placeholder="https://exemplo.com">
+                <button id="go">Ir</button>
             </div>
         </div>
+    </div>
 
-        <div class="iframe-container">
-            <iframe id="frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
-        </div>
+    <div class="iframe-container">
+        <iframe id="frame"></iframe>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -316,15 +198,9 @@
         const proxyInput = document.getElementById("proxy");
         const urlInput = document.getElementById("url");
         const iframe = document.getElementById("frame");
-        const proxyStatus = document.getElementById("proxyStatus");
-        const proxyText = document.getElementById("proxyText");
-        const currentUrlText = document.getElementById("currentUrl");
         const toast = document.getElementById("toast");
-        const historyDiv = document.getElementById("history");
 
-        let urlHistory = JSON.parse(localStorage.getItem('urlHistory') || '[]');
-
-        // Funções de notificação
+        // Função de notificação
         function showToast(message, type = 'success') {
             toast.textContent = message;
             toast.className = `toast ${type}`;
@@ -334,58 +210,7 @@
             }, 3000);
         }
 
-        // Atualizar status do proxy
-        function updateProxyStatus(active, text) {
-            if (active) {
-                proxyStatus.classList.add('active');
-            } else {
-                proxyStatus.classList.remove('active');
-            }
-            proxyText.textContent = text;
-        }
-
-        // Preencher proxy de exemplo
-        function fillProxy(proxyUrl) {
-            proxyInput.value = proxyUrl;
-        }
-
-        // Carregar URL
-        function loadUrl(url) {
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
-            urlInput.value = url;
-            iframe.src = "/proxy?url=" + encodeURIComponent(url);
-            currentUrlText.textContent = url;
-            addToHistory(url);
-        }
-
-        // Histórico
-        function addToHistory(url) {
-            if (!urlHistory.includes(url)) {
-                urlHistory.unshift(url);
-                if (urlHistory.length > 10) urlHistory.pop();
-                localStorage.setItem('urlHistory', JSON.stringify(urlHistory));
-                renderHistory();
-            }
-        }
-
-        function renderHistory() {
-            historyDiv.innerHTML = urlHistory.map((url, index) => `
-                <div class="history-item">
-                    <span onclick="loadUrl('${url}')">${url}</span>
-                    <span class="remove" onclick="removeFromHistory(${index})">✕</span>
-                </div>
-            `).join('');
-        }
-
-        function removeFromHistory(index) {
-            urlHistory.splice(index, 1);
-            localStorage.setItem('urlHistory', JSON.stringify(urlHistory));
-            renderHistory();
-        }
-
-        // Event Listeners
+        // Configurar proxy
         document.getElementById("setProxy").addEventListener("click", async () => {
             const proxy = proxyInput.value.trim();
             if (!proxy) return showToast("Digite um proxy válido", "warning");
@@ -399,45 +224,30 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    updateProxyStatus(true, `Proxy ativo: ${proxy}`);
-                    showToast("✅ Proxy configurado com sucesso!", "success");
+                    showToast("✅ Proxy configurado!", "success");
                 } else {
-                    updateProxyStatus(true, `Proxy configurado: ${proxy} (não testado)`);
-                    showToast("⚠️ Proxy configurado, mas não validado: " + (data.error || ""), "warning");
+                    showToast("⚠️ Proxy configurado (não testado)", "warning");
                 }
             } catch (err) {
-                showToast("❌ Erro ao configurar proxy: " + err.message, "error");
+                showToast("❌ Erro: " + err.message, "error");
             }
         });
 
-        document.getElementById("clearProxy").addEventListener("click", async () => {
-            proxyInput.value = "";
-            try {
-                await fetch("/set-proxy", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ proxy: "" })
-                });
-                updateProxyStatus(false, "Sem proxy configurado");
-                showToast("Proxy removido", "success");
-            } catch (err) {
-                showToast("Erro ao limpar proxy", "error");
-            }
-        });
-
+        // Carregar URL
         document.getElementById("go").addEventListener("click", () => {
             const url = urlInput.value.trim();
             if (!url) return showToast("Digite uma URL!", "warning");
-            loadUrl(url);
-        });
-
-        document.getElementById("reload").addEventListener("click", () => {
-            if (iframe.src) {
-                iframe.src = iframe.src;
-                showToast("Página recarregada", "success");
+            
+            let finalUrl = url;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                finalUrl = 'https://' + url;
             }
+            
+            iframe.src = "/proxy?url=" + encodeURIComponent(finalUrl);
+            showToast("Carregando...", "success");
         });
 
+        // Enter para enviar
         urlInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter") document.getElementById("go").click();
         });
@@ -445,9 +255,6 @@
         proxyInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter") document.getElementById("setProxy").click();
         });
-
-        // Inicializar
-        renderHistory();
     </script>
 </body>
 </html>
