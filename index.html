@@ -136,15 +136,6 @@
             border-radius: 8px;
         }
 
-        .sw-status {
-            text-align: center;
-            color: white;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
-
         .toast {
             position: fixed;
             top: 20px;
@@ -197,8 +188,6 @@
     <h1>O Cu de B0kus</h1>
 </div>
 
-<div class="sw-status" id="swStatus">⏳ Inicializando serviço...</div>
-
 <div class="controls">
     <div class="input-group">
         <label>🔧 Proxy Upstream</label>
@@ -220,7 +209,7 @@
         <label>🌐 Endereço</label>
         <div class="input-wrapper">
             <input id="url" type="text" placeholder="https://exemplo.com">
-            <button id="go" disabled>Aguarde...</button>
+            <button id="go">Ir</button>
             <button id="reload" style="background:#6c757d;">Recarregar</button>
         </div>
     </div>
@@ -231,11 +220,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-
-<!-- UV Config deve vir primeiro -->
-<script src="/uv.config.js"></script>
-<script src="/uv/uv.bundle.js"></script>
-<script src="/uv/uv.client.js"></script>
 
 <script>
     const proxyInput = document.getElementById("proxy");
@@ -248,10 +232,8 @@
     const proxyStatusMsg = document.getElementById("proxyStatusMsg");
     const setProxyBtn = document.getElementById("setProxy");
     const setProxyText = document.getElementById("setProxyText");
-    const goBtn = document.getElementById("go");
-    const swStatus = document.getElementById("swStatus");
+    let currentUrl = null;
 
-    // ========== FUNÇÕES AUXILIARES ==========
     function showToast(message, type = 'success') {
         toast.textContent = message;
         toast.className = `toast ${type}`;
@@ -266,63 +248,6 @@
         if (type === 'success') proxyIcon.innerHTML = '✅';
         else if (type === 'error') proxyIcon.innerHTML = '❌';
         else if (type === 'loading') proxyIcon.innerHTML = '<div class="spinner"></div>';
-    }
-
-    // ========== REGISTRAR SERVICE WORKER ==========
-    async function registrarSW() {
-        if (!('serviceWorker' in navigator)) {
-            swStatus.textContent = '❌ Service Worker não suportado neste navegador';
-            return false;
-        }
-
-        try {
-            // Desregistrar SWs antigos para evitar conflitos
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let reg of registrations) {
-                await reg.unregister();
-                console.log('[SW] Desregistrado:', reg.scope);
-            }
-
-            // Registrar o SW do UV
-            const reg = await navigator.serviceWorker.register('/uv/uv.sw.js', {
-                scope: '/uv/service/',
-                updateViaCache: 'none'
-            });
-
-            console.log('[SW] Registrado:', reg.scope);
-
-            // Aguardar o SW ficar ativo
-            await new Promise((resolve, reject) => {
-                if (reg.active) {
-                    resolve();
-                    return;
-                }
-
-                const sw = reg.installing || reg.waiting;
-                if (!sw) {
-                    reject(new Error('SW não encontrado'));
-                    return;
-                }
-
-                sw.addEventListener('statechange', (e) => {
-                    if (e.target.state === 'activated') resolve();
-                    if (e.target.state === 'redundant') reject(new Error('SW redundante'));
-                });
-            });
-
-            swStatus.textContent = '✅ Serviço ativo e pronto!';
-            setTimeout(() => { swStatus.style.display = 'none'; }, 2000);
-
-            // Habilitar botão Ir
-            goBtn.disabled = false;
-            goBtn.textContent = 'Ir';
-
-            return true;
-        } catch (err) {
-            console.error('[SW] Erro:', err);
-            swStatus.textContent = '❌ Erro ao inicializar: ' + err.message;
-            return false;
-        }
     }
 
     // ========== CONFIGURAR PROXY ==========
@@ -374,7 +299,7 @@
     });
 
     // ========== NAVEGAR ==========
-    async function abrirUrl() {
+    function abrirUrl() {
         const url = urlInput.value.trim();
         if (!url) { showToast("Digite uma URL!", "warning"); return; }
 
@@ -383,25 +308,18 @@
             finalUrl = 'https://' + url;
         }
 
-        try {
-            const encoded = __uv$config.encodeUrl(finalUrl);
-            const proxiedUrl = __uv$config.prefix + encoded;
-            console.log('[UV] Carregando:', proxiedUrl);
-            iframe.src = proxiedUrl;
-            showToast("⏳ Carregando...", "success");
-        } catch (err) {
-            console.error('[UV] Erro:', err);
-            showToast("❌ Erro: " + err.message, "error");
-        }
+        currentUrl = finalUrl;
+        iframe.src = "/proxy?url=" + encodeURIComponent(finalUrl);
+        showToast("⏳ Carregando...", "success");
     }
 
-    goBtn.addEventListener("click", abrirUrl);
+    document.getElementById("go").addEventListener("click", abrirUrl);
     urlInput.addEventListener("keypress", (e) => { if (e.key === "Enter") abrirUrl(); });
 
     // ========== RECARREGAR ==========
     document.getElementById("reload").addEventListener("click", () => {
-        if (iframe.src) {
-            iframe.src = iframe.src;
+        if (currentUrl) {
+            iframe.src = "/proxy?url=" + encodeURIComponent(currentUrl);
             showToast("🔄 Recarregando...", "success");
         } else {
             showToast("Nenhuma página carregada", "warning");
@@ -411,9 +329,6 @@
     // ========== RESTAURAR PROXY SALVO ==========
     const savedProxy = localStorage.getItem('savedProxy');
     if (savedProxy) proxyInput.value = savedProxy;
-
-    // ========== INICIAR ==========
-    registrarSW();
 </script>
 </body>
 </html>
