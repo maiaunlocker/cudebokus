@@ -7,12 +7,9 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
     "compression": "^1.8.1",
     "express": "^4.18.2",
     "https-proxy-agent": "^7.0.6",
-    "socks-proxy-agent": "^8.0.5",
-    "node-fetch": "^3.3.2",
-    "wisp-server-node": "^1.0.5"
+    "socks-proxy-agent": "^8.0.5"
   }
 }
